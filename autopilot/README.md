@@ -30,12 +30,12 @@ No thread should ever panic, as long as the other threads are alive.
 - [X] L298N controller (2 brushed motors control)
 - [X] BNO055 controller (heading only)
 - [X] PID controller
-- [ ] PID tests
+- [X] PID tests
 - [X] Heading control
 - [X] On-disk async logging
 - [X] Configuration file for PID values and log level
-- [ ] Raspberry Pi Zero cross-compilation setup
-- [ ] GPS I2C driver
+- [X] Raspberry Pi Zero cross-compilation setup
+- [ ] GPS serial over mini UART
 - [ ] Waypoint mission with GPS
 - [ ] Waypoint mission tests
 - [ ] 3-axis attitude follow
