@@ -1,0 +1,12 @@
+[package]
+name = "pid"
+version = "0.1.0"
+authors = ["vincent <vincent.leporcher@telecom-paris.fr>"]
+edition = "2018"
+
+[dependencies]
+mint = "0.5.5"
+num-traits = "0.2.12"
+
+[dev-dependencies]
+assert_approx_eq = "1.1.0"

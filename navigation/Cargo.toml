@@ -1,0 +1,8 @@
+[package]
+name = "navigation"
+version = "0.1.0"
+authors = ["vincent <vincent.leporcher@telecom-paris.fr>"]
+edition = "2018"
+
+[dev-dependencies]
+assert_approx_eq = "1.1.0"

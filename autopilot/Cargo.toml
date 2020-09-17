@@ -1,0 +1,32 @@
+[package]
+name = "autopilot"
+version = "0.1.0"
+authors = ["vincent <vincent.leporcher@telecom-paris.fr>"]
+edition = "2018"
+
+[dependencies]
+
+pid = { path = "../pid" }
+
+anyhow = "1.0.32"
+systemstat = "0.1.5"
+crossbeam-channel = "0.4.3"
+lazy_static = "1.4.0"
+log = "0.4.11"
+tini = "0.4.0"
+num-traits = "0.2.12"
+chrono = "0.4.15"
+embedded-hal = "0.2.4" # Not using latest 1.0 because of breaking changes
+rppal = { version = "0.11.3", features = ["hal-unproven"] }
+bno055 = "0.3.1"
+mint = "0.5.5"
+
+[dependencies.serialport]
+version = "3.3.0"
+default-features = false
+
+[dependencies.arraydeque]
+version = "~0.4"
+default-features = false
+
+[dev-dependencies]
