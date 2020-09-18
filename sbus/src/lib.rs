@@ -25,12 +25,12 @@ impl SbusPacket {
 		const MAX: u16 = 1811;
 		const RANGE: f32 = (MAX - MIN) as f32;
 
-		-1.0 + (channel.max(MAX).min(MIN) - MIN) as f32 * 2.0 / RANGE
+		-1.0 + (channel.min(MAX).max(MIN) - MIN) as f32 * 2.0 / RANGE
 	}
 }
 
 pub struct SbusPacketParser {
-	buffer: ArrayDeque<[u8; (PACKET_SIZE * 2) as usize], Wrapping>,
+	buffer: ArrayDeque<[u8; 50], Wrapping>,
 }
 
 impl SbusPacketParser {

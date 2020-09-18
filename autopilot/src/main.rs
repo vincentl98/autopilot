@@ -39,111 +39,115 @@ use crate::input_controllers::system_information_input_controller::SystemInforma
 use crate::output::OutputController;
 use crate::output_controllers::l298n_output_controller::{L298NOutputController, MotorPins};
 use crate::tank::{TankAutopilot, TankOutputFrame};
+use bno055::BNO055OperationMode;
+use rppal::i2c::I2c;
 
 fn main() {
-    let (level_filter, pid) = read_config().expect("Failed to read configuration file");
+	std::env::set_var("RUST_BACKTRACE", "full");
 
-    let black_box = BlackBoxController::new();
-    black_box.spawn(level_filter);
+	let (level_filter, pid) = read_config().expect("Failed to read configuration file");
 
-    let l298n_output_controller = L298NOutputController::new(
-        MotorPins {
-            pwm_channel: rppal::pwm::Channel::Pwm0,
-            pin_in_1: 17,
-            pin_in_2: 27,
-        },
-        MotorPins {
-            pwm_channel: rppal::pwm::Channel::Pwm1,
-            pin_in_1: 5,
-            pin_in_2: 6,
-        },
-    )
-    .expect("Failed to create L298N");
+	let black_box = BlackBoxController::new();
+	black_box.spawn(level_filter);
+	//
+	// let l298n_output_controller = L298NOutputController::new(
+	//     MotorPins {
+	//         pwm_channel: rppal::pwm::Channel::Pwm0,
+	//         pin_in_1: 17,
+	//         pin_in_2: 27,
+	//     },
+	//     MotorPins {
+	//         pwm_channel: rppal::pwm::Channel::Pwm1,
+	//         pin_in_1: 5,
+	//         pin_in_2: 6,
+	//     },
+	// )
+	// .expect("Failed to create L298N");
 
-    let armed_input_controller = ArmedInputController::new();
-    let armed_sender = armed_input_controller.sender();
+	let armed_input_controller = ArmedInputController::new();
+	let armed_sender = armed_input_controller.sender();
 
-    let car_autopilot = TankAutopilot::new(pid);
+	let car_autopilot = TankAutopilot::new(pid);
 
-    // Output controllers
-    let (motors_sender, motors_receiver) = unbounded::<(f64, f64)>();
+	// Output controllers
+	// let (motors_sender, motors_receiver) = unbounded::<(f64, f64)>();
+	//
+	// l298n_output_controller.spawn(motors_receiver);
 
-    l298n_output_controller.spawn(motors_receiver);
+	// // Dispatcher
+	let (output_frame_sender, output_frame_receiver) = unbounded::<TankOutputFrame>();
+	// let dispatcher = tank::TankDispatcher { motors_sender };
+	//
+	// dispatcher.spawn(output_frame_receiver);
 
-    // Dispatcher
-    let (output_frame_sender, output_frame_receiver) = unbounded::<TankOutputFrame>();
-    let dispatcher = tank::TankDispatcher { motors_sender };
+	// Autopilot
+	let (input_frame_sender, input_frame_receiver) = unbounded::<InputFrame>();
+	car_autopilot.spawn(input_frame_receiver, output_frame_sender);
 
-    dispatcher.spawn(output_frame_receiver);
+	// Collector
+	let (input_sender, input_receiver) = unbounded::<Input>();
 
-    // Autopilot
-    let (input_frame_sender, input_frame_receiver) = unbounded::<InputFrame>();
-    car_autopilot.spawn(input_frame_receiver, output_frame_sender);
+	let collector = tank::TankCollector::new();
+	collector.spawn(input_receiver, input_frame_sender);
 
-    // Collector
-    let (input_sender, input_receiver) = unbounded::<Input>();
+	// Input controllers
+	Bno055InputController::new(I2c::with_bus(3).expect("I2C bus n°3 not found"))
+		.expect("Failed to initialize BNO055")
+		.spawn(input_sender.clone());
 
-    let collector = tank::TankCollector::new();
-    collector.spawn(input_receiver, input_frame_sender);
+	SystemInformationInputController::new().spawn(input_sender.clone());
 
-    // Input controllers
-    Bno055InputController::new()
-        .unwrap()
-        .spawn(input_sender.clone());
+	// SbusInputController::new()
+	//     .unwrap()
+	//     .spawn(input_sender.clone());
 
-    SystemInformationInputController::new().spawn(input_sender.clone());
+	armed_input_controller.spawn(input_sender.clone());
 
-    SbusInputController::new()
-        .unwrap()
-        .spawn(input_sender.clone());
+	armed_sender.send(true).unwrap();
 
-    armed_input_controller.spawn(input_sender.clone());
+	println!("Press enter to stop autopilot ...");
+	std::io::stdin()
+		.read_line(&mut String::new())
+		.expect("Failed to read standard input");
 
-    armed_sender.send(true).unwrap();
+	armed_sender.send(false).unwrap();
 
-    println!("Press enter to stop autopilot ...");
-    std::io::stdin()
-        .read_line(&mut String::new())
-        .expect("Failed to read standard input");
-
-    armed_sender.send(false).unwrap();
-
-    println!("Stopping ...");
-    thread::sleep(Duration::from_secs(2));
+	println!("Stopping ...");
+	thread::sleep(Duration::from_millis(100));
 }
 
 fn read_config() -> anyhow::Result<(LevelFilter, (f32, f32, f32))> {
-    const CONFIG_FILE_NAME: &'static str = "autopilot.ini";
+	const CONFIG_FILE_NAME: &'static str = "autopilot.ini";
 
-    let config = Ini::from_file(CONFIG_FILE_NAME).expect("Failed to load configuration file");
+	let config = Ini::from_file(CONFIG_FILE_NAME).expect("Failed to load configuration file");
 
-    const LOG_SECTION: &'static str = "log_level";
-    const LEVEL_FILTER: &'static str = "log_level";
+	const LOG_SECTION: &'static str = "log";
+	const LEVEL_FILTER: &'static str = "level";
 
-    let level_filter = match config
-        .get::<u32>(LOG_SECTION, LEVEL_FILTER)
-        .ok_or(anyhow!("Failed to read log level filter"))
-        .map_err(|e| warn!("{}", e))
-        .unwrap_or(0)
-    {
-        5 => LevelFilter::Off,
-        4 => LevelFilter::Error,
-        3 => LevelFilter::Warn,
-        2 => LevelFilter::Info,
-        1 => LevelFilter::Debug,
-        0 => LevelFilter::Trace,
-        _ => return Err(anyhow!("Invalid log level filter")),
-    };
+	let level_filter = match config
+		.get::<u32>(LOG_SECTION, LEVEL_FILTER)
+		.ok_or(anyhow!("Failed to read log level filter"))
+		.map_err(|e| warn!("{}", e))
+		.unwrap_or(0)
+	{
+		5 => LevelFilter::Off,
+		4 => LevelFilter::Error,
+		3 => LevelFilter::Warn,
+		2 => LevelFilter::Info,
+		1 => LevelFilter::Debug,
+		0 => LevelFilter::Trace,
+		_ => return Err(anyhow!("Invalid log level filter")),
+	};
 
-    const PID_HEADING_SECTION: &'static str = "pid";
-    const PID_P: &'static str = "p";
-    const PID_I: &'static str = "i";
-    const PID_D: &'static str = "d";
-    let pid: (f32, f32, f32) = (
-        config.get(PID_HEADING_SECTION, PID_P).unwrap(),
-        config.get(PID_HEADING_SECTION, PID_I).unwrap(),
-        config.get(PID_HEADING_SECTION, PID_D).unwrap(),
-    );
+	const PID_HEADING_SECTION: &'static str = "pid";
+	const PID_P: &'static str = "p";
+	const PID_I: &'static str = "i";
+	const PID_D: &'static str = "d";
+	let pid: (f32, f32, f32) = (
+		config.get(PID_HEADING_SECTION, PID_P).unwrap(),
+		config.get(PID_HEADING_SECTION, PID_I).unwrap(),
+		config.get(PID_HEADING_SECTION, PID_D).unwrap(),
+	);
 
-    Ok((level_filter, pid))
+	Ok((level_filter, pid))
 }

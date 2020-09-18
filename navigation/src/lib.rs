@@ -37,7 +37,6 @@ pub fn angle_difference_deg(a: i32, b: i32) -> i32 {
 		}
 	};
 
-
 	if (difference >= 0 && difference <= 180) || (difference <= -180 && difference >= -360) {
 		smallest_angle
 	} else {
@@ -45,30 +44,10 @@ pub fn angle_difference_deg(a: i32, b: i32) -> i32 {
 	}
 }
 
-/*
- /**
-     * Returns the heading from one LatLng to another LatLng. Headings are
-     * expressed in degrees clockwise from North within the range [-180,180).
-     *
-     * @return The heading in degrees clockwise from north.
-     */
-    public static double computeHeading(LatLng from, LatLng to) {
-        // http://williams.best.vwh.net/avform.htm#Crs
-        double fromLat = toRadians(from.latitude);
-        double fromLng = toRadians(from.longitude);
-        double toLat = toRadians(to.latitude);
-        double toLng = toRadians(to.longitude);
-        double dLng = toLng - fromLng;
-        double heading = atan2(
-                sin(dLng) * cos(toLat),
-                cos(fromLat) * sin(toLat) - sin(fromLat) * cos(toLat) * cos(dLng));
-        return wrap(toDegrees(heading), -180, 180);
-    }
- */
-
 /// Returns the initial true heading followed to travel from `a` to `b`.
 /// Warning: the shortest path on the surface between two points is given by the great circle
 /// crossing these two points. Therefore, heading is not constant throughout the travel.
+/// Adapted from `Google Maps SDK`
 pub fn heading(from: (f32, f32), to: (f32, f32)) -> f32 {
 	let delta = to.1 as f64 - from.1 as f64;
 

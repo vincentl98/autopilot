@@ -20,7 +20,7 @@ impl SbusInputController {
 			flow_control: FlowControl::None,
 			parity: Parity::Even,
 			stop_bits: StopBits::Two,
-			timeout: Duration::from_secs(5),
+			timeout: Duration::from_millis(14),
 		};
 
 		const SERIAL_PORT: &'static str = "/dev/serial0";
@@ -35,9 +35,9 @@ impl SbusInputController {
 
 impl InputController for SbusInputController {
 	fn read_input(&mut self, input_sender: Sender<Input>) -> ! {
-		const SBUS_PACKET_SIZE: usize = 25;
+		let mut buffer = [0u8; sbus::PACKET_SIZE];
 
-		let mut buffer = [0u8; SBUS_PACKET_SIZE];
+		// An SBUS packet is sent every 14 ms
 
 		loop {
 			let read_bytes = self.serial_port
@@ -59,15 +59,6 @@ impl InputController for SbusInputController {
 			} else {
 				warn!("No bytes read from serial");
 			}
-
-			// thread::sleep(Duration::from_millis(50));
-			self.serial_port
-				.clear(ClearBuffer::Input)
-				.map_err(|e| error!("Failed to clear serial buffer: {}", e))
-				.unwrap_or(());
-
-			const LOOP_DELAY: Duration = Duration::from_millis(10);
-			thread::sleep(LOOP_DELAY);
 		}
 	}
 }
