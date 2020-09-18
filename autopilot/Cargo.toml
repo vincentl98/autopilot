@@ -7,26 +7,18 @@ edition = "2018"
 [dependencies]
 
 pid = { path = "../pid" }
+sbus = { path = "../sbus" }
+navigation = { path = "../navigation" }
 
 anyhow = "1.0.32"
-systemstat = "0.1.5"
+bno055 = "0.3.1"
+chrono = "0.4.15"
 crossbeam-channel = "0.4.3"
+embedded-hal = "0.2.4" # Not using latest 1.0 because of breaking changes
 lazy_static = "1.4.0"
 log = "0.4.11"
-tini = "0.4.0"
-num-traits = "0.2.12"
-chrono = "0.4.15"
-embedded-hal = "0.2.4" # Not using latest 1.0 because of breaking changes
-rppal = { version = "0.11.3", features = ["hal-unproven"] }
-bno055 = "0.3.1"
 mint = "0.5.5"
-
-[dependencies.serialport]
-version = "3.3.0"
-default-features = false
-
-[dependencies.arraydeque]
-version = "~0.4"
-default-features = false
-
-[dev-dependencies]
+rppal = { version = "0.11.3", features = ["hal-unproven"] }
+serialport = { version = "3.3.0", default-features = false }
+systemstat = "0.1.5"
+tini = "0.4.0"

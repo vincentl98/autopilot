@@ -5,7 +5,6 @@ use serialport::{SerialPort, SerialPortSettings, DataBits, FlowControl, Parity, 
 use sbus::SbusPacketParser;
 use std::thread;
 
-mod sbus;
 
 /// Note: the serial input should be inverted with an adequate circuit.
 pub struct SbusInputController {
