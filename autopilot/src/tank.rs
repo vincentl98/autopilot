@@ -90,12 +90,12 @@ impl Autopilot for TankAutopilot {
 			const TRIGGER_A: usize = 4;
 			const TRIGGER_B: usize = 5;
 
-			match (&input_frame.armed, &input_frame.rc_channels) {
-				(Some(armed), Some(rc_channels)) => {
+			match (&input_frame.soft_armed, &input_frame.rc_channels) {
+				(Some(soft_armed), Some(rc_channels)) => {
 					if rc_channels.failsafe {
 						Mode::Failsafe
 					} else {
-						if *armed && rc_channels.channels[TRIGGER_A] > 0. {
+						if *soft_armed && rc_channels.channels[TRIGGER_A] > 0. {
 							if rc_channels.channels[TRIGGER_B] > 0. {
 								Mode::ArmedAutonomous
 							} else {
@@ -202,12 +202,15 @@ impl Collector for TankCollector {
 	fn collect(&mut self, input: Input) -> InputFrame {
 		match input {
 			Input::RcChannels(rc_channels) => self.input_frame.rc_channels = Some(rc_channels),
-			Input::Armed(armed) => self.input_frame.armed = Some(armed),
+			Input::SoftArmed(armed) => self.input_frame.soft_armed = Some(armed),
 			Input::SystemInformation(system_information) => {
 				self.input_frame.system_information = Some(system_information)
 			}
 			Input::OrientationEuler(orientation) => {
 				self.input_frame.orientation = Some((orientation, Instant::now()))
+			},
+			Input::ImuCalibrationStatus(status) => {
+				self.input_frame.imu_calibration_status = Some(status)
 			}
 		}
 

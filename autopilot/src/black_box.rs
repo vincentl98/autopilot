@@ -33,9 +33,9 @@ impl BlackBoxController {
 		let log_file_name = {
 			let now = chrono::offset::Local::now();
 
-			format!("autopilot_{}_{}_{}_{}_{}_{}.log",
-					now.date().day(), now.date().month(), now.date().year(),
-					now.time().hour(), now.time().minute(), now.time().second())
+			format!("autopilot_{}-{}-{}_{}-{}-{}.log",
+					now.time().hour(), now.time().minute(), now.time().second(),
+					now.date().day(), now.date().month(), now.date().year())
 		};
 
 		BlackBoxController {
@@ -64,7 +64,7 @@ impl BlackBoxController {
 	fn flush(&mut self) -> anyhow::Result<()> {
 		while let Some(message) = self.buffer.pop_front() {
 			writeln!(self.file, "{}", message)?;
-			println!("{}", message);
+			// println!("{}", message);
 		}
 		Ok(())
 	}
@@ -83,7 +83,7 @@ impl BlackBoxController {
 						Message::Flush => self.try_flush(),
 					}
 
-					const MAX_BUFFER_LEN: usize = 32;
+					const MAX_BUFFER_LEN: usize = 128;
 					if self.buffer.len() > MAX_BUFFER_LEN {
 						self.try_flush();
 					}

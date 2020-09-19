@@ -32,7 +32,7 @@ use crate::autopilot::Autopilot;
 use crate::black_box::BlackBoxController;
 use crate::collector::{Collector, InputFrame};
 use crate::input::{Input, InputController};
-use crate::input_controllers::armed_input_controller::ArmedInputController;
+use crate::input_controllers::armed_input_controller::SoftArmedInputController;
 use crate::input_controllers::bno055_input_controller::Bno055InputController;
 use crate::input_controllers::sbus_input_controller::SbusInputController;
 use crate::input_controllers::system_information_input_controller::SystemInformationInputController;
@@ -45,10 +45,13 @@ use rppal::i2c::I2c;
 fn main() {
 	std::env::set_var("RUST_BACKTRACE", "full");
 
+	println!("Autopilot {}", env!("CARGO_PKG_VERSION"));
+
 	let (level_filter, pid) = read_config().expect("Failed to read configuration file");
 
 	let black_box = BlackBoxController::new();
 	black_box.spawn(level_filter);
+
 	//
 	// let l298n_output_controller = L298NOutputController::new(
 	//     MotorPins {
@@ -64,7 +67,7 @@ fn main() {
 	// )
 	// .expect("Failed to create L298N");
 
-	let armed_input_controller = ArmedInputController::new();
+	let armed_input_controller = SoftArmedInputController::new();
 	let armed_sender = armed_input_controller.sender();
 
 	let car_autopilot = TankAutopilot::new(pid);
@@ -91,15 +94,17 @@ fn main() {
 	collector.spawn(input_receiver, input_frame_sender);
 
 	// Input controllers
-	Bno055InputController::new(I2c::with_bus(3).expect("I2C bus n°3 not found"))
+	let i2c_3 = I2c::with_bus(3).unwrap();
+
+	Bno055InputController::new(i2c_3, None)
 		.expect("Failed to initialize BNO055")
 		.spawn(input_sender.clone());
 
 	SystemInformationInputController::new().spawn(input_sender.clone());
 
-	// SbusInputController::new()
-	//     .unwrap()
-	//     .spawn(input_sender.clone());
+	SbusInputController::new()
+	    .unwrap()
+	    .spawn(input_sender.clone());
 
 	armed_input_controller.spawn(input_sender.clone());
 
@@ -125,18 +130,17 @@ fn read_config() -> anyhow::Result<(LevelFilter, (f32, f32, f32))> {
 	const LEVEL_FILTER: &'static str = "level";
 
 	let level_filter = match config
-		.get::<u32>(LOG_SECTION, LEVEL_FILTER)
-		.ok_or(anyhow!("Failed to read log level filter"))
-		.map_err(|e| warn!("{}", e))
-		.unwrap_or(0)
+		.get::<String>(LOG_SECTION, LEVEL_FILTER)
+		.unwrap()
+		.as_str()
 	{
-		5 => LevelFilter::Off,
-		4 => LevelFilter::Error,
-		3 => LevelFilter::Warn,
-		2 => LevelFilter::Info,
-		1 => LevelFilter::Debug,
-		0 => LevelFilter::Trace,
-		_ => return Err(anyhow!("Invalid log level filter")),
+		"none" => LevelFilter::Off,
+		"error" => LevelFilter::Error,
+		"warn" => LevelFilter::Warn,
+		"info" => LevelFilter::Info,
+		"debug" => LevelFilter::Debug,
+		"all" => LevelFilter::Trace,
+		other => return Err(anyhow!("Invalid log level filter \"{}\"", other)),
 	};
 
 	const PID_HEADING_SECTION: &'static str = "pid";

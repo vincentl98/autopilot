@@ -11,6 +11,15 @@ pub struct RcChannels {
 	pub failsafe: bool,
 }
 
+#[derive(Debug, Copy, Clone)]
+pub enum ImuCalibrationStatus {
+	Lowest,
+	Low,
+	High,
+	Highest,
+	Unknown,
+}
+
 /// Abstraction of a physical measurement.
 /// Bounded values such as RC channels should be normalized by the input controller beforehand.
 #[derive(Copy, Clone, Debug)]
@@ -25,7 +34,8 @@ pub enum Input {
 	// AngularVelocity([f64; 3]),
 	// Acceleration([f64; 3]),
 	RcChannels(RcChannels),
-	Armed(bool),
+	SoftArmed(bool),
+	ImuCalibrationStatus(ImuCalibrationStatus),
 }
 
 pub trait InputController

@@ -1,7 +1,7 @@
 use crossbeam_channel::{Receiver, Sender};
 use std::thread::JoinHandle;
 use std::thread;
-use crate::input::{Input, RcChannels};
+use crate::input::{Input, RcChannels, ImuCalibrationStatus};
 use std::time::Instant;
 use crate::input_controllers::system_information_input_controller::SystemInformation;
 
@@ -10,8 +10,9 @@ use crate::input_controllers::system_information_input_controller::SystemInforma
 pub struct InputFrame {
 	pub system_information: Option<SystemInformation>,
 	pub rc_channels: Option<RcChannels>,
-	pub armed: Option<bool>,
+	pub soft_armed: Option<bool>,
 	pub orientation: Option<(mint::EulerAngles<f32, ()>, Instant)>,
+	pub imu_calibration_status: Option<ImuCalibrationStatus>,
 }
 
 pub trait Collector
