@@ -1,15 +1,12 @@
 use crate::input::{InputController, Input, RcChannels};
 use crossbeam_channel::Sender;
 use std::time::{Duration};
-use serialport::{SerialPort, SerialPortSettings, DataBits, FlowControl, Parity, StopBits, ClearBuffer};
-use sbus::SbusPacketParser;
-use std::thread;
+use serialport::{SerialPort, SerialPortSettings, DataBits, FlowControl, Parity, StopBits};
 
 
 /// Note: the serial input should be inverted with an adequate circuit.
 pub struct SbusInputController {
 	serial_port: Box<dyn SerialPort>,
-	packet_parser: SbusPacketParser,
 }
 
 impl SbusInputController {
@@ -28,31 +25,25 @@ impl SbusInputController {
 			serial_port: serialport::open_with_settings(SERIAL_PORT, &SETTINGS)
 				.map_err(|e| error!("Failed to open serial port {}: {}", &SERIAL_PORT, e))
 				.unwrap(),
-			packet_parser: SbusPacketParser::new(),
 		})
 	}
 }
 
 impl InputController for SbusInputController {
 	fn read_input(&mut self, input_sender: Sender<Input>) -> ! {
-		let mut buffer = [0u8; sbus::PACKET_SIZE];
-
-		// An SBUS packet is sent every 14 ms
+		let mut buffer = [0u8; sbus::BUFFER_SIZE];
 
 		loop {
-			let read_bytes = self.serial_port
-				.read(&mut buffer)
+			if self.serial_port
+				.read_exact(&mut buffer)
 				.map_err(|e| error!("Failed to read from serial port: {}", &e))
-				.unwrap_or(0);
+				.is_ok() {
 
-			if read_bytes > 0 {
-				self.packet_parser.push_bytes(&buffer[..read_bytes]);
-
-				if let Some(packet) = self.packet_parser.try_parse() {
+				if let Some(packet) = sbus::try_parse(&buffer) {
 					input_sender
 						.send(Input::RcChannels(RcChannels {
 							channels: packet.normalized_channels().clone(),
-							failsafe: false,
+							failsafe: packet.failsafe,
 						}))
 						.unwrap()
 				}

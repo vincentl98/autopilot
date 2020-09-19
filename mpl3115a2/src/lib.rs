@@ -1,10 +1,8 @@
+#[no_std]
 /// Adapted from https://sensorian.github.io/c_docs/_example1_2_m_p_l3115_a2_8c_source.html
-
-use rppal::i2c::I2c;
-use std::sync::Arc;
-use parking_lot::{Mutex, MutexGuard};
+use embedded_hal::blocking::i2c::{WriteRead, Write};
 use std::time::Duration;
-use crate::mpl3115a2::SensorMode::Altitude;
+use std::marker::PhantomData;
 
 #[allow(dead_code)]
 mod registers;
@@ -12,21 +10,18 @@ mod registers;
 #[allow(dead_code)]
 mod constants;
 
-#[allow(dead_code)]
 #[derive(Eq, PartialEq)]
 pub enum PowerMode {
 	Standby,
 	Active,
 }
 
-#[allow(dead_code)]
 #[derive(Eq, PartialEq)]
 pub enum SensorMode {
 	Pressure,
 	Altitude,
 }
 
-#[allow(dead_code)]
 pub enum OversamplingRatio {
 	Ratio1,
 	Ratio2,
@@ -36,58 +31,62 @@ pub enum OversamplingRatio {
 	Ratio128,
 }
 
-pub struct Mpl3115a2<'a> {
-	i2c: &'a I2c,
+pub struct Mpl3115a2<I2C> {
+	i2c: PhantomData<I2C>,
 	sensor_mode: SensorMode,
 }
 
-const I2C_TIMEOUT: Duration = Duration::from_millis(5);
+// These values are set on reset
+const DEFAULT_SENSOR_MODE: SensorMode = SensorMode::Pressure;
+const DEFAULT_POWER_MODE: PowerMode = PowerMode::Standby;
 
-impl Mpl3115a2<'_> {
-	pub fn new(i2c: &Mutex<I2c>, initial_power_mode: PowerMode,
-			   initial_sensor_mode: SensorMode, oversampling_ratio: OversamplingRatio) -> anyhow::Result<Mpl3115a2> {
-		let mut instance = Mpl3115a2 { i2c, sensor_mode: initial_sensor_mode };
+impl<I2C, E> Mpl3115a2<I2C>
+	where I2C: Write<Error=E> + WriteRead<Error=E> {
+	pub fn new(i2c: I2C) -> Self {
+		Self {
+			i2c,
+			sensor_mode: DEFAULT_SENSOR_MODE, // Will be overriden by call to `init`
+		}
+	}
 
-		instance.i2c
-			.try_lock_for(I2C_TIMEOUT)
-			.ok_or(anyhow!("I2C timeout."))?
-			.set_slave_address(constants::I2C_ADDRESS)?;
+	pub fn init(&mut self,
+				power_mode: PowerMode,
+				sensor_mode: SensorMode,
+				oversampling_ratio: OversamplingRatio) -> Result<(), E> {
 
-		instance.identify()?;
+        self.identify()?;
 
 		instance.set_standby_mode()?;
 		instance.write_register(registers::PT_DATA_CFG,
 								constants::DREM | constants::PDEFE | constants::TDEFE)?;
 
-		let mut ratio: u8;
 
-		match oversampling_ratio {
-			OversamplingRatio::Ratio1 => ratio = constants::OS_1,
-			OversamplingRatio::Ratio2 => ratio = constants::OS_2,
-			OversamplingRatio::Ratio16 => ratio = constants::OS_16,
-			OversamplingRatio::Ratio32 => ratio = constants::OS_32, // 130 ms
-			OversamplingRatio::Ratio64 => ratio = constants::OS_64, // 258 ms
-			OversamplingRatio::Ratio128 => ratio = constants::OS_128, // 512 ms
-		}
+		let oversampling_ratio = {
+			match oversampling_ratio {
+				OversamplingRatio::Ratio1 => constants::OS_1,
+				OversamplingRatio::Ratio2 => constants::OS_2,
+				OversamplingRatio::Ratio16 => constants::OS_16,
+				OversamplingRatio::Ratio32 => constants::OS_32, // 130 ms
+				OversamplingRatio::Ratio64 => constants::OS_64, // 258 ms
+				OversamplingRatio::Ratio128 => constants::OS_128, // 512 ms
+			}
+		};
+
 
 		instance.write_register(registers::CTRL_REG1,
-								ratio | constants::ACTIVE)?;
+								oversampling_ratio | constants::ACTIVE)?;
 
-		if initial_power_mode == PowerMode::Active {
+		if power_mode != DEFAULT_POWER_MODE {
 			instance.set_active_mode()?;
 		}
 
-		if instance.sensor_mode == SensorMode::Altitude {
+        self.sensor_mode = sensor_mode;
+
+		if instance.sensor_mode == DEFAULT_SENSOR_MODE {
 			instance.set_altitude_mode()?;
 		}
 
 		Ok(instance)
-	}
-
-	fn i2c_try_lock(&mut self) -> anyhow::Result<MutexGuard<I2c>> {
-		Ok(self.i2c
-			.try_lock_for(I2C_TIMEOUT)
-			.ok_or(anyhow!("I2C timeout."))?)
 	}
 
 	fn write_register(&mut self, register: u8, value: u8) -> anyhow::Result<()> {
@@ -98,6 +97,7 @@ impl Mpl3115a2<'_> {
 	}
 
 	fn read_register(&mut self, register: u8) -> anyhow::Result<u8> {
+        self.i2c.write()
 		let mut i2c = self.i2c_try_lock()?;
 		i2c.set_slave_address(constants::I2C_ADDRESS)?;
 
@@ -239,4 +239,9 @@ impl Mpl3115a2<'_> {
 	fn is_pressure_or_altitude_data_available(status: u8) -> bool {
 		status & 0b100 != 0
 	}
+}
+
+#[cfg(test)]
+mod tests {
+	/// TODO
 }

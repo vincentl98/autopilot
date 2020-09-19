@@ -64,7 +64,7 @@ impl BlackBoxController {
 	fn flush(&mut self) -> anyhow::Result<()> {
 		while let Some(message) = self.buffer.pop_front() {
 			writeln!(self.file, "{}", message)?;
-			// println!("{}", message);
+			println!("{}", message);
 		}
 		Ok(())
 	}
@@ -83,7 +83,7 @@ impl BlackBoxController {
 						Message::Flush => self.try_flush(),
 					}
 
-					const MAX_BUFFER_LEN: usize = 128;
+					const MAX_BUFFER_LEN: usize = 8;
 					if self.buffer.len() > MAX_BUFFER_LEN {
 						self.try_flush();
 					}
