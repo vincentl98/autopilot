@@ -39,7 +39,7 @@ use crate::input_controllers::system_information_input_controller::SystemInforma
 use crate::output::OutputController;
 use crate::output_controllers::l298n_output_controller::{L298NOutputController, MotorPins};
 use crate::tank::{TankAutopilot, TankOutputFrame};
-use bno055::BNO055OperationMode;
+use bno055::OperationMode;
 use rppal::i2c::I2c;
 
 fn main() {

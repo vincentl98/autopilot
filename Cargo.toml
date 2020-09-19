@@ -1,2 +1,2 @@
 [workspace]
-members = ["autopilot", "pid", "navigation", "sbus"]
+members = ["autopilot", "pid", "navigation", "sbus", "bno055"]

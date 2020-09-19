@@ -6,12 +6,12 @@ edition = "2018"
 
 [dependencies]
 
+bno055 = { path = "../bno055" }
 pid = { path = "../pid" }
 sbus = { path = "../sbus" }
 navigation = { path = "../navigation" }
 
 anyhow = "1.0.32"
-bno055 = "0.3.1"
 chrono = "0.4.15"
 crossbeam-channel = "0.4.3"
 embedded-hal = "0.2.4" # Not using latest 1.0 because of breaking changes (`rppal` implements outdated traits)
