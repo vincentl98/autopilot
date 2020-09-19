@@ -2,6 +2,7 @@
 /// Adapted from `sbus` library by Ze'ev Klapow
 
 use arraydeque::{ArrayDeque, Wrapping};
+use arrayvec::ArrayVec;
 
 pub const PACKET_SIZE: usize = 25;
 pub const CHANNELS: usize = 16;
@@ -58,10 +59,16 @@ impl SbusPacketParser {
 			if *self.buffer.get(PACKET_SIZE - 1).unwrap() == FOOTER
 				&& self.buffer.get(PACKET_SIZE - 2).unwrap() & FLAG_MASK == 0
 			{
-				let mut data_bytes: [u16; 23] = [0; 23];
-				for i in 0..23 {
-					data_bytes[i] = self.buffer.pop_front().unwrap_or(0) as u16;
-				}
+				// let arrayvec = ArrayVec::<[u16; 23]>::new();
+
+				let data_bytes: ArrayVec<[u16; 23]> = self.buffer
+					.drain(0..23)
+					.map(|x| x as u16)
+					.collect();
+
+				// for i in 0..23 {
+				// 	data_bytes[i] = self.buffer.pop_front().unwrap_or(0) as u16;
+				// }
 
 				let mut channels: [u16; 16] = [0; 16];
 
@@ -109,9 +116,11 @@ impl SbusPacketParser {
 					failsafe: is_flag_set(flag_byte, 3),
 				})
 			} else {
-				while self.buffer.len() > 0 && *self.buffer.get(0).unwrap() != HEADER {
-					self.buffer.pop_front();
-				}
+				let i = self.buffer
+					.iter()
+					.position(|&item| item == HEADER)
+					.unwrap_or(self.buffer.len());
+				self.buffer.drain(0..i);
 
 				None
 			}
@@ -119,6 +128,7 @@ impl SbusPacketParser {
 	}
 }
 
+#[inline(always)]
 fn is_flag_set(flag_byte: u8, idx: u8) -> bool {
 	flag_byte & 1 << idx == 1
 }
