@@ -9,21 +9,21 @@ extern crate log;
 #[macro_use]
 extern crate lazy_static;
 
-mod input_controllers;
-
-mod output_controllers;
-
 mod autopilot;
 mod black_box;
 mod collector;
 mod dispatcher;
 mod input;
+mod input_controllers;
 mod output;
+mod output_controllers;
 mod tank;
 
+use bno055::OperationMode;
 use crossbeam_channel::unbounded;
 use dispatcher::Dispatcher;
 use log::LevelFilter;
+use rppal::i2c::I2c;
 use std::thread;
 use std::time::Duration;
 use tini::Ini;
@@ -39,33 +39,32 @@ use crate::input_controllers::system_information_input_controller::SystemInforma
 use crate::output::OutputController;
 use crate::output_controllers::l298n_output_controller::{L298NOutputController, MotorPins};
 use crate::tank::{TankAutopilot, TankOutputFrame};
-use bno055::OperationMode;
-use rppal::i2c::I2c;
+
 
 fn main() {
 	std::env::set_var("RUST_BACKTRACE", "full");
 
-	println!("Autopilot {}", env!("CARGO_PKG_VERSION"));
+	info!("Autopilot {}", env!("CARGO_PKG_VERSION"));
 
 	let (level_filter, pid) = read_config().expect("Failed to read configuration file");
 
 	let black_box = BlackBoxController::new();
 	black_box.spawn(level_filter);
 
-	//
-	// let l298n_output_controller = L298NOutputController::new(
-	//     MotorPins {
-	//         pwm_channel: rppal::pwm::Channel::Pwm0,
-	//         pin_in_1: 17,
-	//         pin_in_2: 27,
-	//     },
-	//     MotorPins {
-	//         pwm_channel: rppal::pwm::Channel::Pwm1,
-	//         pin_in_1: 5,
-	//         pin_in_2: 6,
-	//     },
-	// )
-	// .expect("Failed to create L298N");
+
+	let l298n_output_controller = L298NOutputController::new(
+	    MotorPins {
+	        pwm_channel: rppal::pwm::Channel::Pwm0,
+	        pin_in_1: 17,
+	        pin_in_2: 27,
+	    },
+	    MotorPins {
+	        pwm_channel: rppal::pwm::Channel::Pwm1,
+	        pin_in_1: 5,
+	        pin_in_2: 6,
+	    },
+	)
+	.expect("Failed to create L298N");
 
 	let armed_input_controller = SoftArmedInputController::new();
 	let armed_sender = armed_input_controller.sender();
@@ -73,15 +72,15 @@ fn main() {
 	let car_autopilot = TankAutopilot::new(pid);
 
 	// Output controllers
-	// let (motors_sender, motors_receiver) = unbounded::<(f64, f64)>();
-	//
-	// l298n_output_controller.spawn(motors_receiver);
+	let (motors_sender, motors_receiver) = unbounded::<(f64, f64)>();
 
-	// // Dispatcher
+	l298n_output_controller.spawn(motors_receiver);
+
+	// Dispatcher
 	let (output_frame_sender, output_frame_receiver) = unbounded::<TankOutputFrame>();
-	// let dispatcher = tank::TankDispatcher { motors_sender };
-	//
-	// dispatcher.spawn(output_frame_receiver);
+	let dispatcher = tank::TankDispatcher { motors_sender };
+
+	dispatcher.spawn(output_frame_receiver);
 
 	// Autopilot
 	let (input_frame_sender, input_frame_receiver) = unbounded::<InputFrame>();

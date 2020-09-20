@@ -4,6 +4,5 @@ members = [
     "pid",
     "navigation",
     "sbus",
-    "bno055",
-    "mpl3115a2"
+    "bno055"
 ]

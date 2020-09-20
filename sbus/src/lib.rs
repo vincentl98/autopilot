@@ -5,6 +5,7 @@
 // period of 14 + 2 = 16 ms. This can be down-sampled to about 1/2 by setting buffer size to twice
 // the packet size. With this buffer size, it is guaranteed to always have one full packet in the
 // buffer, while it is also possible to have two.
+
 pub const BUFFER_SIZE: usize = 2 * PACKET_SIZE;
 pub const PACKET_SIZE: usize = 25;
 pub const CHANNELS: usize = 16;
@@ -25,7 +26,7 @@ impl Packet {
 	fn normalized_channel(channel: u16) -> f32 {
 		// There is no documented max/min values as it is a proprietary protocol. However, these
 		// values seem to be the most extreme possible. Theoretical range is 0-2047 as each channel
-		// is encoded as 11 bits, but most transmitters won't go below/above the chosen constants.
+		// is encoded as 11 bits, but most transmitters won't go below/above the constants below.
 
 		const MIN: u16 = 172;
 		const MAX: u16 = 1811;
@@ -36,14 +37,12 @@ impl Packet {
 }
 
 pub fn try_parse(buffer: &[u8; BUFFER_SIZE]) -> Option<Packet> {
-	// This is a partially optimized version the SBUS parser proposed by the original author, which
-	// is somehow inefficient.
 	// The implementation is made as follows:
 	// - Given a non-circular buffer, search for the first footer byte beginning by the end of the
 	// buffer
-	// - Once found, check some parameters: enough size behind the footer to hold a packer, the flag
+	// - Once found, check some parameters: enough size behind the footer to hold a packet, the flag
 	// mask is here, and so is the header. Else, it is highly unlikely that another packet is
-	// present (only the case when having two packets in the same buffer).
+	// present (only the case when having two packets in the same buffer), so we'll just abort.
 	// - Then assume the packet is correct and parse it
 	// There is not checksum implemented in this protocol. The serial protocol implements it though,
 	// through the parity bit. But on fully random data, the parity bit has 1/2 odd to be correct.
@@ -52,7 +51,7 @@ pub fn try_parse(buffer: &[u8; BUFFER_SIZE]) -> Option<Packet> {
 
 	if let Some(footer_rev) = buffer
 		.iter()
-		.rev()
+		.rev()// This iterator could be restrained to only the last half of the buffer
 		.position(|&item| item == FOOTER) {
 
 		let footer = BUFFER_SIZE - footer_rev;

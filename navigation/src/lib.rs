@@ -13,7 +13,7 @@ use std::f32::consts::{TAU, PI};
 /// Warning: not WGS84 compliant.
 pub fn distance(from: (f32, f32), to: (f32, f32)) -> u32 {
 
-	// Double precision is needed for intermediate calculus
+	// Double precision is needed for intermediate calculation
 	let intermediate_term = 0.5
 		- (to.0 as f64 - from.0 as f64).to_radians().cos() / 2.
 		+ (from.0 as f64).to_radians().cos() * (to.0 as f64).to_radians().cos() *
@@ -25,7 +25,8 @@ pub fn distance(from: (f32, f32), to: (f32, f32)) -> u32 {
 	(EARTH_DIAMETER * intermediate_term.sqrt().asin()).ceil() as u32
 }
 
-/// Returns the algebraic difference `a - b` of two angles `a` and `b` in degrees, clockwise is positive.
+/// Returns the algebraic difference `a - b` of two angles `a` and `b` in degrees clockwise within
+/// the range [-180,180).
 pub fn angle_difference_deg(a: i32, b: i32) -> i32 {
 	let difference = a - b;
 	let difference_abs = difference.abs() % 360;
@@ -63,7 +64,8 @@ pub fn heading_deg(from: (f32, f32), to: (f32, f32)) -> f32 {
 	heading(from, to).to_degrees()
 }
 
-/// Returns the algebraic difference `a - b` of two angles `a` and `b` in radians, clockwise is positive.
+/// Returns the algebraic difference `a - b` of two angles `a` and `b` in radians clockwise within
+/// the range [-180,180).
 pub fn angle_difference(a: f32, b: f32) -> f32 {
 	let difference = a - b;
 	let difference_abs = difference.abs() % TAU;

@@ -1,6 +1,6 @@
 #![no_std]
 
-/// Adapted from `bno055` library
+/// Adapted from `bno055` library by Eugene P. and Henrik B.
 
 ///! Bosch Sensortec BNO055 9-axis IMU sensor driver.
 ///! Datasheet: https://ae-bst.resource.bosch.com/media/_tech/media/datasheets/BST-BNO055-DS000.pdf
@@ -28,20 +28,20 @@ pub enum Error<E> {
 	InvalidMode,
 }
 
-pub struct Bno055<I> {
-	i2c: I,
+pub struct Bno055<I2C> {
+	i2c: I2C,
 	pub mode: OperationMode,
 	page: RegisterPage,
 	use_default_addr: bool,
 }
 
-impl<I, E> Bno055<I>
+impl<I2C, E> Bno055<I2C>
 	where
-		I: WriteRead<Error=E> + Write<Error=E>,
+		I2C: WriteRead<Error=E> + Write<Error=E>,
 {
 	/// Side-effect-free constructor.
 	/// Nothing will be read or written before `init()` call.
-	pub fn new(i2c: I) -> Self {
+	pub fn new(i2c: I2C) -> Self {
 		Bno055 {
 			i2c,
 			page: RegisterPage::PAGE_0,
@@ -51,7 +51,7 @@ impl<I, E> Bno055<I>
 	}
 
 	/// Enables use of alternative I2C address `regs::BNO055_ALTERNATE_ADDR`.
-	pub fn with_alternative_address(i2c: I) -> Self {
+	pub fn with_alternative_address(i2c: I2C) -> Self {
 		Bno055 {
 			i2c,
 			page: RegisterPage::PAGE_0,
@@ -200,7 +200,7 @@ impl<I, E> Bno055<I>
 	}
 
 	/// Configures device's axes sign: positive or negative.
-	pub fn set_axis_sign(&mut self, sign: BNO055AxisSign) -> Result<(), Error<E>> {
+	pub fn set_axis_sign(&mut self, sign: AxisSign) -> Result<(), Error<E>> {
 		self.set_page(RegisterPage::PAGE_0)?;
 
 		self.write_u8(regs::BNO055_AXIS_MAP_SIGN, sign.bits())
@@ -210,14 +210,14 @@ impl<I, E> Bno055<I>
 	}
 
 	/// Return device's axes sign.
-	pub fn axis_sign(&mut self) -> Result<BNO055AxisSign, Error<E>> {
+	pub fn axis_sign(&mut self) -> Result<AxisSign, Error<E>> {
 		self.set_page(RegisterPage::PAGE_0)?;
 
 		let value = self
 			.read_u8(regs::BNO055_AXIS_MAP_SIGN)
 			.map_err(Error::I2c)?;
 
-		Ok(BNO055AxisSign::from_bits_truncate(value))
+		Ok(AxisSign::from_bits_truncate(value))
 	}
 
 	/// Gets the revision of software, bootloader, accelerometer, magnetometer, and gyroscope of
@@ -242,12 +242,12 @@ impl<I, E> Bno055<I>
 	/// Returns device's system status.
 	pub fn get_system_status(
 		&mut self,
-		do_selftest: bool,
+		do_self_test: bool,
 		delay: &mut dyn DelayMs<u16>,
 	) -> Result<BNO055SystemStatus, Error<E>> {
 		self.set_page(RegisterPage::PAGE_0)?;
 
-		let selftest = if do_selftest {
+		let self_test = if do_self_test {
 			let prev = self.mode;
 			self.set_mode(OperationMode::CONFIG_MODE, delay)?;
 
@@ -265,7 +265,7 @@ impl<I, E> Bno055<I>
 
 			self.set_mode(prev, delay)?; // Restore previous mode
 
-			Some(BNO055SelfTestStatus::from_bits_truncate(result))
+			Some(SelfTestStatus::from_bits_truncate(result))
 		} else {
 			None
 		};
@@ -274,9 +274,9 @@ impl<I, E> Bno055<I>
 		let error = self.read_u8(regs::BNO055_SYS_ERR).map_err(Error::I2c)?;
 
 		Ok(BNO055SystemStatus {
-			status: BNO055SystemStatusCode::from_bits_truncate(status),
-			error: BNO055SystemErrorCode::from_bits_truncate(error),
-			selftest,
+			status: SystemStatusCode::from_bits_truncate(status),
+			error: SystemErrorCode::from_bits_truncate(error),
+			self_test,
 		})
 	}
 
@@ -348,7 +348,7 @@ impl<I, E> Bno055<I>
 		let acc = (status >> 2) & 0b11;
 		let mag = status & 0b11;
 
-		Ok(CalibrationStatus { all, gyr, acc, mag })
+		Ok(CalibrationStatus { all: sys, gyr, acc, mag })
 	}
 
 	/// Checks whether device is fully calibrated or not.
@@ -472,8 +472,8 @@ impl<I, E> Bno055<I>
 	pub fn linear_acceleration(&mut self) -> Result<mint::Vector3<f32>, Error<E>> {
 		if self.is_in_fusion_mode()? {
 			self.set_page(RegisterPage::PAGE_0)?;
-			let scaling = 1f32 / 100f32; // 1 m/s^2 = 100 lsb
-			self.read_vec(regs::BNO055_LIA_DATA_X_LSB, scaling)
+			const SCALE: f32 = 1. / 100.; // 1 m/s^2 = 100 lsb
+			self.read_vec(regs::BNO055_LIA_DATA_X_LSB, SCALE)
 		} else {
 			Err(Error::InvalidMode)
 		}
@@ -484,8 +484,8 @@ impl<I, E> Bno055<I>
 	pub fn gravity(&mut self) -> Result<mint::Vector3<f32>, Error<E>> {
 		if self.is_in_fusion_mode()? {
 			self.set_page(RegisterPage::PAGE_0)?;
-			let scaling = 1f32 / 100f32; // 1 m/s^2 = 100 lsb
-			self.read_vec(regs::BNO055_GRV_DATA_X_LSB, scaling)
+			const SCALE: f32 = 1. / 100.; // 1 m/s^2 = 100 lsb
+			self.read_vec(regs::BNO055_GRV_DATA_X_LSB, SCALE)
 		} else {
 			Err(Error::InvalidMode)
 		}
@@ -500,8 +500,8 @@ impl<I, E> Bno055<I>
 			| OperationMode::ACC_MAG
 			| OperationMode::AMG => {
 				self.set_page(RegisterPage::PAGE_0)?;
-				let scaling = 1f32 / 100f32; // 1 m/s^2 = 100 lsb
-				self.read_vec(regs::BNO055_ACC_DATA_X_LSB, scaling)
+				const SCALE: f32 = 1. / 100.; // 1 m/s^2 = 100 lsb
+				self.read_vec(regs::BNO055_ACC_DATA_X_LSB, SCALE)
 			}
 
 			_ => Err(Error::InvalidMode),
@@ -517,8 +517,8 @@ impl<I, E> Bno055<I>
 			| OperationMode::MAG_GYRO
 			| OperationMode::AMG => {
 				self.set_page(RegisterPage::PAGE_0)?;
-				let scaling = 1f32 / 16f32; // 1 deg/s = 16 lsb
-				self.read_vec(regs::BNO055_GYR_DATA_X_LSB, scaling)
+				const SCALE: f32 = 1. / 16.; // 1 deg/s = 16 lsb
+				self.read_vec(regs::BNO055_GYR_DATA_X_LSB, SCALE)
 			}
 
 			_ => Err(Error::InvalidMode),
@@ -534,8 +534,8 @@ impl<I, E> Bno055<I>
 			| OperationMode::MAG_GYRO
 			| OperationMode::AMG => {
 				self.set_page(RegisterPage::PAGE_0)?;
-				let scaling = 1f32 / 16f32; // 1 uT = 16 lsb
-				self.read_vec(regs::BNO055_MAG_DATA_X_LSB, scaling)
+				const SCALE: f32 = 1. / 16.; // 1 uT = 16 lsb
+				self.read_vec(regs::BNO055_MAG_DATA_X_LSB, SCALE)
 			}
 
 			_ => Err(Error::InvalidMode),
@@ -693,7 +693,7 @@ impl AxisRemapBuilder {
 }
 
 bitflags! {
-    pub struct BNO055AxisSign: u8 {
+    pub struct AxisSign: u8 {
         const X_NEGATIVE = 0b100;
         const Y_NEGATIVE = 0b010;
         const Z_NEGATIVE = 0b001;
@@ -701,7 +701,7 @@ bitflags! {
 }
 
 bitflags! {
-    pub struct BNO055SystemStatusCode: u8 {
+    pub struct SystemStatusCode: u8 {
         const SYSTEM_IDLE = 0;
         const SYSTEM_ERROR = 1;
         const INIT_PERIPHERALS = 2;
@@ -714,7 +714,7 @@ bitflags! {
 
 bitflags! {
     /// Possible BNO055 errors.
-    pub struct BNO055SystemErrorCode: u8 {
+    pub struct SystemErrorCode: u8 {
         const NONE = 0;
         const PERIPHERAL_INIT = 1;
         const SYSTEM_INIT = 2;
@@ -731,7 +731,7 @@ bitflags! {
 
 bitflags! {
     /// BNO055 self-test status bit flags.
-    pub struct BNO055SelfTestStatus: u8 {
+    pub struct SelfTestStatus: u8 {
         const ACC_OK = 0b0001;
         const MAG_OK = 0b0010;
         const GYR_OK = 0b0100;
@@ -741,9 +741,9 @@ bitflags! {
 
 #[derive(Debug)]
 pub struct BNO055SystemStatus {
-	status: BNO055SystemStatusCode,
-	selftest: Option<BNO055SelfTestStatus>,
-	error: BNO055SystemErrorCode,
+	status: SystemStatusCode,
+	self_test: Option<SelfTestStatus>,
+	error: SystemErrorCode,
 }
 
 #[derive(Debug)]
@@ -803,7 +803,7 @@ impl CalibrationProfile {
 	}
 }
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct CalibrationStatus {
 	pub all: u8,
 	pub gyr: u8,
