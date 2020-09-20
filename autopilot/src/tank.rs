@@ -201,16 +201,20 @@ impl TankCollector {
 impl Collector for TankCollector {
 	fn collect(&mut self, input: Input) -> InputFrame {
 		match input {
+			Input::Altitude(altitude) => self.input_frame.altitude = Some(altitude),
 			Input::RcChannels(rc_channels) => self.input_frame.rc_channels = Some(rc_channels),
 			Input::SoftArmed(armed) => self.input_frame.soft_armed = Some(armed),
-			Input::SystemInformation(system_information) => {
-				self.input_frame.system_information = Some(system_information)
-			}
+			// Input::SystemInformation(system_information) => {
+			// 	self.input_frame.system_information = Some(system_information)
+			// }
 			Input::OrientationEuler(orientation) => {
 				self.input_frame.orientation = Some((orientation, Instant::now()))
-			},
+			}
 			Input::ImuCalibrationStatus(status) => {
 				self.input_frame.imu_calibration_status = Some(status)
+			}
+			Input::Temperature(temperature) => {
+				self.input_frame.temperature = Some(temperature)
 			}
 		}
 

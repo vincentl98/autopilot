@@ -403,7 +403,7 @@ impl<I2C, E> Bno055<I2C>
 		}
 
 		self.i2c
-			.write(self.i2c_addr(), &buf_with_reg[..])
+			.write(self.address(), &buf_with_reg[..])
 			.map_err(Error::I2c)?;
 
 		self.set_mode(prev_mode, delay)?;
@@ -552,7 +552,7 @@ impl<I2C, E> Bno055<I2C>
 	}
 
 	#[inline(always)]
-	fn i2c_addr(&self) -> u8 {
+	fn address(&self) -> u8 {
 		if !self.use_default_addr {
 			regs::BNO055_ALTERNATE_ADDR
 		} else {
@@ -560,10 +560,11 @@ impl<I2C, E> Bno055<I2C>
 		}
 	}
 
+	#[inline(always)]
 	fn read_u8(&mut self, reg: u8) -> Result<u8, E> {
 		let mut byte: [u8; 1] = [0; 1];
 
-		match self.i2c.write_read(self.i2c_addr(), &[reg], &mut byte) {
+		match self.i2c.write_read(self.address(), &[reg], &mut byte) {
 			Ok(_) => Ok(byte[0]),
 			Err(e) => Err(e),
 		}
@@ -571,12 +572,12 @@ impl<I2C, E> Bno055<I2C>
 
     #[inline(always)]
 	fn read_bytes(&mut self, reg: u8, buf: &mut [u8]) -> Result<(), E> {
-		self.i2c.write_read(self.i2c_addr(), &[reg], buf)
+		self.i2c.write_read(self.address(), &[reg], buf)
 	}
 
     #[inline(always)]
 	fn write_u8(&mut self, reg: u8, value: u8) -> Result<(), E> {
-		self.i2c.write(self.i2c_addr(), &[reg, value])?;
+		self.i2c.write(self.address(), &[reg, value])?;
 
 		Ok(())
 	}

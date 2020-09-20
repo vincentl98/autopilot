@@ -4,5 +4,9 @@ members = [
     "pid",
     "navigation",
     "sbus",
-    "bno055"
+    "bno055",
+    "mpl3115a2"
 ]
+
+#[profile.release]
+#lto = true

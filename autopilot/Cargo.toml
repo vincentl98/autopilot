@@ -7,6 +7,7 @@ edition = "2018"
 [dependencies]
 
 bno055 = { path = "../bno055" }
+mpl3115a2 = { path = "../mpl3115a2" }
 pid = { path = "../pid" }
 sbus = { path = "../sbus" }
 navigation = { path = "../navigation" }

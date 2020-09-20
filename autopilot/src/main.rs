@@ -19,7 +19,6 @@ mod output;
 mod output_controllers;
 mod tank;
 
-use bno055::OperationMode;
 use crossbeam_channel::unbounded;
 use dispatcher::Dispatcher;
 use log::LevelFilter;
@@ -35,11 +34,16 @@ use crate::input::{Input, InputController};
 use crate::input_controllers::armed_input_controller::SoftArmedInputController;
 use crate::input_controllers::bno055_input_controller::Bno055InputController;
 use crate::input_controllers::sbus_input_controller::SbusInputController;
-use crate::input_controllers::system_information_input_controller::SystemInformationInputController;
+// use crate::input_controllers::system_information_input_controller::SystemInformationInputController;
 use crate::output::OutputController;
 use crate::output_controllers::l298n_output_controller::{L298NOutputController, MotorPins};
 use crate::tank::{TankAutopilot, TankOutputFrame};
+use crate::input_controllers::mpl3115a2_input_controller::Mpl3115A2InputController;
 
+//
+// lazy_static! {
+// 	pub static ref I2C_3: I2c =
+// }
 
 fn main() {
 	std::env::set_var("RUST_BACKTRACE", "full");
@@ -52,19 +56,19 @@ fn main() {
 	black_box.spawn(level_filter);
 
 
-	let l298n_output_controller = L298NOutputController::new(
-	    MotorPins {
-	        pwm_channel: rppal::pwm::Channel::Pwm0,
-	        pin_in_1: 17,
-	        pin_in_2: 27,
-	    },
-	    MotorPins {
-	        pwm_channel: rppal::pwm::Channel::Pwm1,
-	        pin_in_1: 5,
-	        pin_in_2: 6,
-	    },
-	)
-	.expect("Failed to create L298N");
+	// let l298n_output_controller = L298NOutputController::new(
+	//     MotorPins {
+	//         pwm_channel: rppal::pwm::Channel::Pwm0,
+	//         pin_in_1: 17,
+	//         pin_in_2: 27,
+	//     },
+	//     MotorPins {
+	//         pwm_channel: rppal::pwm::Channel::Pwm1,
+	//         pin_in_1: 5,
+	//         pin_in_2: 6,
+	//     },
+	// )
+	// .expect("Failed to create L298N");
 
 	let armed_input_controller = SoftArmedInputController::new();
 	let armed_sender = armed_input_controller.sender();
@@ -72,15 +76,15 @@ fn main() {
 	let car_autopilot = TankAutopilot::new(pid);
 
 	// Output controllers
-	let (motors_sender, motors_receiver) = unbounded::<(f64, f64)>();
-
-	l298n_output_controller.spawn(motors_receiver);
+	// let (motors_sender, motors_receiver) = unbounded::<(f64, f64)>();
+	//
+	// l298n_output_controller.spawn(motors_receiver);
 
 	// Dispatcher
 	let (output_frame_sender, output_frame_receiver) = unbounded::<TankOutputFrame>();
-	let dispatcher = tank::TankDispatcher { motors_sender };
-
-	dispatcher.spawn(output_frame_receiver);
+	// let dispatcher = tank::TankDispatcher { motors_sender };
+	//
+	// dispatcher.spawn(output_frame_receiver);
 
 	// Autopilot
 	let (input_frame_sender, input_frame_receiver) = unbounded::<InputFrame>();
@@ -93,13 +97,15 @@ fn main() {
 	collector.spawn(input_receiver, input_frame_sender);
 
 	// Input controllers
-	let i2c_3 = I2c::with_bus(3).unwrap();
-
-	Bno055InputController::new(i2c_3, None)
+	Bno055InputController::new(I2c::with_bus(3).unwrap(), None)
 		.expect("Failed to initialize BNO055")
 		.spawn(input_sender.clone());
 
-	SystemInformationInputController::new().spawn(input_sender.clone());
+	Mpl3115A2InputController::new(I2c::with_bus(3).unwrap())
+		.expect("Failed to initialize MPL3115A2")
+		.spawn(input_sender.clone());
+
+	// SystemInformationInputController::new().spawn(input_sender.clone());
 
 	SbusInputController::new()
 	    .unwrap()

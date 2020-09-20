@@ -3,16 +3,18 @@ use std::thread::JoinHandle;
 use std::thread;
 use crate::input::{Input, RcChannels, ImuCalibrationStatus};
 use std::time::Instant;
-use crate::input_controllers::system_information_input_controller::SystemInformation;
+// use crate::input_controllers::system_information_input_controller::SystemInformation;
 
 /// Buffers inputs sent asynchronously by input controllers.
 #[derive(Debug, Default, Clone)]
 pub struct InputFrame {
-	pub system_information: Option<SystemInformation>,
-	pub rc_channels: Option<RcChannels>,
-	pub soft_armed: Option<bool>,
+	pub altitude: Option<f32>,
 	pub orientation: Option<(mint::EulerAngles<f32, ()>, Instant)>,
 	pub imu_calibration_status: Option<ImuCalibrationStatus>,
+	pub rc_channels: Option<RcChannels>,
+	pub soft_armed: Option<bool>,
+	// pub system_information: Option<SystemInformation>,
+	pub temperature: Option<f32>,
 }
 
 pub trait Collector
@@ -22,7 +24,6 @@ pub trait Collector
 	fn spawn(mut self,
 			 input_receiver: Receiver<Input>,
 			 input_frame_sender: Sender<InputFrame>) -> JoinHandle<()> {
-
 		thread::spawn(move || {
 			for input in input_receiver {
 				let input_frame = self.collect(input);

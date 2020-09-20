@@ -1,7 +1,7 @@
 use crossbeam_channel::Sender;
 use std::thread::JoinHandle;
 use std::thread;
-use crate::input_controllers::system_information_input_controller::SystemInformation;
+// use crate::input_controllers::system_information_input_controller::SystemInformation;
 
 const MAX_RC_CHANNELS: usize = 16;
 
@@ -24,18 +24,19 @@ pub enum ImuCalibrationStatus {
 /// Bounded values such as RC channels should be normalized by the input controller beforehand.
 #[derive(Copy, Clone, Debug)]
 pub enum Input {
-	SystemInformation(SystemInformation),
+	// SystemInformation(SystemInformation),
 	// BatteryVoltage(f64),
 	// Current(f64),
-	// Pressure(f64),
+	Altitude(f32),
 	// Position ([f64; 3]),
+	ImuCalibrationStatus(ImuCalibrationStatus),
 	OrientationEuler(mint::EulerAngles<f32, ()>),
 	// Velocity([f64; 3]),
 	// AngularVelocity([f64; 3]),
 	// Acceleration([f64; 3]),
 	RcChannels(RcChannels),
 	SoftArmed(bool),
-	ImuCalibrationStatus(ImuCalibrationStatus),
+	Temperature(f32),
 }
 
 pub trait InputController

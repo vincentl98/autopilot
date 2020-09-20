@@ -1,0 +1,10 @@
+[package]
+name = "mpl3115a2"
+version = "0.1.0"
+authors = ["vincent <vincent.leporcher@telecom-paris.fr>"]
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+embedded-hal = "0.2.4"
