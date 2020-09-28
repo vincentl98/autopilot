@@ -1,49 +1,17 @@
-use crossbeam_channel::Sender;
-use std::thread::JoinHandle;
-use std::thread;
-// use crate::input_controllers::system_information_input_controller::SystemInformation;
+use mint::{EulerAngles, Quaternion, Vector3};
+use std::time::Instant;
 
-const MAX_RC_CHANNELS: usize = 16;
-
-#[derive(Default, Debug, Copy, Clone)]
-pub struct RcChannels {
-	pub channels: [f32; MAX_RC_CHANNELS],
-	pub failsafe: bool,
-}
-
-#[derive(Debug, Copy, Clone)]
-pub enum ImuCalibrationStatus {
-	Lowest,
-	Low,
-	High,
-	Highest,
-	Unknown,
-}
-
-/// Abstraction of a physical measurement.
-/// Bounded values such as RC channels should be normalized by the input controller beforehand.
-#[derive(Copy, Clone, Debug)]
+#[derive(Clone, Debug)]
+#[allow(dead_code)]
 pub enum Input {
-	// SystemInformation(SystemInformation),
-	// BatteryVoltage(f64),
-	// Current(f64),
-	Altitude(f32),
-	// Position ([f64; 3]),
-	ImuCalibrationStatus(ImuCalibrationStatus),
-	OrientationEuler(mint::EulerAngles<f32, ()>),
-	// Velocity([f64; 3]),
-	// AngularVelocity([f64; 3]),
-	// Acceleration([f64; 3]),
-	RcChannels(RcChannels),
-	SoftArmed(bool),
-	Temperature(f32),
-}
-
-pub trait InputController
-	where Self: Sized + Send + 'static {
-	/// Reads a physical value from a sensor or an input device.
-	fn read_input(&mut self, input_sender: Sender<Input>) -> !;
-	fn spawn(mut self, input_sender: Sender<Input>) -> JoinHandle<()> {
-		thread::spawn(move || self.read_input(input_sender))
-	}
+    Acceleration((Vector3<f32>, Instant)),
+    AngularVelocity((Vector3<f32>, Instant)),
+    BarometricPressure((f32, Instant)),
+    MagneticField((Vector3<f32>, Instant)),
+    /// Euler angles is represented as roll, pitch, yaw/heading.
+    OrientationEuler((EulerAngles<f32, ()>, Instant)),
+    OrientationQuaternion((Quaternion<f32>, Instant)),
+    RcChannels(sbus::Packet),
+    SoftArmed(bool),
+    Temperature((f32, Instant)),
 }

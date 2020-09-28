@@ -10,7 +10,7 @@ pub(crate) const PTDR: u8 = 0x08;
 // Pressure/Altitude OR Temperature data ready
 pub(crate) const PDR: u8 = 0x04;
 // Pressure/Altitude new data available
-pub(crate) const TDR: u8 = 0x02;    // Temperature new Data Available.
+pub(crate) const TDR: u8 = 0x02; // Temperature new Data Available.
 
 // Control Register 1
 pub(crate) const ALT: u8 = 0x80;
@@ -59,7 +59,7 @@ pub(crate) const PP_OD1: u8 = 0x08;
 //Set to 0 for internal pull up
 pub(crate) const IPOL2: u8 = 0x02;
 //1 Active high, 0 Active Low Interrupt on Pad2
-pub(crate) const PP_OD2: u8 = 0x01;       //Set to 0 for internal pull up
+pub(crate) const PP_OD2: u8 = 0x01; //Set to 0 for internal pull up
 
 // Control Register 4
 pub(crate) const INT_EN_DRDY: u8 = 0x80;

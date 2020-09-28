@@ -3,8 +3,7 @@
 extern crate assert_approx_eq;
 
 use num_traits::float::FloatCore;
-use std::fmt::Display;
-use std::time::Instant;
+use std::{fmt::Display, time::Instant};
 
 pub struct Pid<F: FloatCore> {
     k: (F, F, F),
