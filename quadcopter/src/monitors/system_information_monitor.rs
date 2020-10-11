@@ -1,4 +1,3 @@
-use crate::traits::Monitor;
 use std::{
     error::Error,
     fmt,
@@ -6,6 +5,7 @@ use std::{
     time::Duration,
 };
 use systemstat::Platform;
+use autopilot::Monitor;
 
 #[derive(Debug, Copy, Clone)]
 pub struct SystemInformation {

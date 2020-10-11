@@ -6,22 +6,20 @@ edition = "2018"
 
 [dependencies]
 
-bno055 = { path = "../bno055" }
-mpl3115a2 = { path = "../mpl3115a2" }
-pid = { path = "../pid" }
-sbus = { path = "../sbus" }
-navigation = { path = "../navigation" }
-
 anyhow = "1.0.32"
 chrono = "0.4.15"
 crossbeam-channel = "0.4.3"
 embedded-hal = "0.2.4" # Not using latest 1.0 because of breaking changes (`rppal` implements outdated traits)
 lazy_static = "1.4.0"
 log = "0.4.11"
-mint = "0.5.5"
-pwm-pca9685 = "0.3.0"
+
+#pwm-pca9685 = "0.3.0"
 rppal = { version = "0.11.3", features = ["hal-unproven"] }
-serialport = { version = "3.3.0", default-features = false }
+#linux-embedded-hal = { version = "0.3", features = ["gpio_cdev"] }
+#gpio-cdev = "0.4.0"
+#serialport = { version = "3.3.0", default-features = false }
+spidev = "0.4.0"
 systemstat = "0.1.5"
 tini = "0.4.0"
-ublox = { version = "0.2.1", features = ["serial"] }
+#ublox = { version = "0.2.1", features = ["serial"] }
+nalgebra = "0.22.0"

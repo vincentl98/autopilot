@@ -1,5 +1,0 @@
-[package]
-name = "sbus"
-version = "0.1.0"
-authors = ["vincent <vincent.leporcher@telecom-paris.fr>"]
-edition = "2018"
