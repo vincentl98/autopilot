@@ -1,0 +1,23 @@
+[package]
+name = "quadcopter"
+version = "0.1.0"
+authors = ["vincent <vincent.leporcher@telecom-paris.fr>"]
+edition = "2018"
+
+[dependencies]
+
+ahrs = { path = "../ahrs" }
+autopilot = { path = "../autopilot" }
+black_box = { path = "../black_box" }
+lsm9ds1 = { path = "../lsm9ds1" }
+
+anyhow = "1.0.33"
+chrono = "0.4.15"
+crossbeam-channel = "0.4.3"
+embedded-hal = "0.2.4" # Not using latest 1.0 because of breaking changes (`rppal` implements outdated traits)
+lazy_static = "1.4.0"
+log = "0.4.11"
+rppal = { version = "0.11.3", features = ["hal-unproven"] }
+spidev = "0.4.0"
+systemstat = "0.1.5"
+tini = "0.4.0"

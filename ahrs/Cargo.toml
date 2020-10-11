@@ -1,0 +1,11 @@
+[package]
+name = "ahrs"
+version = "0.1.0"
+authors = ["Vincent Leporcher"]
+edition = "2018"
+
+[dependencies]
+autopilot = { path = "../autopilot" }
+
+nalgebra = "0.22.0"
+num-traits = "0.2.12"
