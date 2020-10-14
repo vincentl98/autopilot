@@ -1,25 +1,44 @@
 use nalgebra::Vector3;
-use std::time::Instant;
+use std::time::{Instant, Duration};
+
+pub const G: f32 = 9.80665;
 
 #[derive(Clone, Debug)]
 pub struct ImuData {
-    pub acc: Vector3<f32>,
-    pub gyr: Vector3<f32>,
-    pub mag: Vector3<f32>,
+	pub acc: Vector3<f32>,
+	pub gyr: Vector3<f32>,
+	pub mag: Vector3<f32>,
+	pub instant: Instant,
 }
+
+impl Default for ImuData {
+	fn default() -> Self {
+		ImuData {
+			acc: Vector3::default(),
+			gyr: Vector3::default(),
+			mag: Vector3::default(),
+			instant: Instant::now(),
+		}
+	}
+}
+
+#[derive(Clone, Debug, Default)]
+pub struct NavioAdcData {
+	pub board_voltage: f32,
+	pub servo_voltage: f32,
+	pub external_voltage: f32,
+	pub external_current: f32,
+	pub adc_port_2: f32,
+	pub adc_port_3: f32,
+}
+
+pub type RcChannels = Option<[f32; 16]>;
 
 #[derive(Clone, Debug)]
 #[allow(dead_code)]
 pub enum Input {
-    // Acceleration((Vector3<f32>, Instant)),
-    // AngularVelocity((Vector3<f32>, Instant)),
-    // BarometricPressure((f32, Instant)),
-    // MagneticField((Vector3<f32>, Instant)),
-    /// Euler angles is represented as roll, pitch, yaw/heading.
-    // OrientationEuler((EulerAngles<f32, ()>, Instant)),
-    // OrientationQuaternion((Quaternion<f32>, Instant)),
-    // RcChannels(sbus::Packet),
-    Imu((ImuData, Instant)),
-    SoftArmed(bool),
-    // Temperature((f32, Instant)),
+	RcChannels(RcChannels),
+	NavioAdc(NavioAdcData),
+	Imu(ImuData),
+	SoftArmed(bool),
 }

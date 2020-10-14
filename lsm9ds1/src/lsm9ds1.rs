@@ -4,10 +4,11 @@ use std::{thread, io};
 use std::time::{Duration, Instant};
 use nalgebra::Vector3;
 
-use autopilot::ImuData;
+use autopilot::{ImuData, G};
 
 use constants::*;
 use registers::*;
+use std::f32::consts::PI;
 
 /// LSM9DS1 driver using Linux `Spidev`
 pub struct LSM9DS1 {
@@ -17,7 +18,6 @@ pub struct LSM9DS1 {
 
 
 pub const OUTPUT_DELAY: Duration = Duration::from_micros(4202);
-const G: f32 = 9.80665;
 
 impl LSM9DS1 {
 	pub fn new(acc_gyr_spi_path: &str, mag_spi_path: &str) -> Result<Self, io::Error> {
@@ -88,12 +88,12 @@ impl LSM9DS1 {
 		Ok(self)
 	}
 
-	pub fn read_output(&mut self) -> Result<(ImuData, Instant), io::Error> {
-		const ACC_4G_SCALE: f32 = 1. / (i16::max_value() / 4) as f32 * G;
-		const GYR_500_DPS_SCALE: f32 = 1. / (i16::max_value() / 500) as f32;
-		const MAG_4G_SCALE: f32 = 1. / (i16::max_value() / 4) as f32;
+	pub fn read_output(&mut self) -> Result<([Vector3<f32>; 3], Instant), io::Error> {
+		const ACC_4G_SCALE: f32 = 4. * G / i16::max_value() as f32;
+		const GYR_500_DPS_SCALE: f32 = 500. * PI / i16::max_value() as f32 / 180.;
+		const MAG_4G_SCALE: f32 = 4. / i16::max_value() as f32;
 
-		let now = Instant::now();
+		let instant = Instant::now();
 
 		let acc_output = self.read_acc_or_gyr_output(OUT_X_L_ACC)?;
 
@@ -117,7 +117,7 @@ impl LSM9DS1 {
 		let gyr = Vector3::<f32>::new(gyr_x, gyr_y, gyr_z);
 		let mag = Vector3::<f32>::new(mag_x, mag_y, mag_z);
 
-		Ok((ImuData { acc, gyr, mag }, now))
+		Ok(([acc, gyr, mag], instant))
 	}
 
 	#[inline(always)]

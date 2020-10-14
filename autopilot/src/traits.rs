@@ -102,6 +102,8 @@ where
         }
     }
 
+    /// Spawns a thread running `read_loop`. It is expected that the input controller is ready to
+    /// read when spawned, i.e. that the initialization (if any) is done.
     fn spawn(mut self, input_sender: Sender<Input>) -> thread::JoinHandle<()> {
         thread::spawn(move || self.read_loop(input_sender))
     }

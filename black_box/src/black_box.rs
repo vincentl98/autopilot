@@ -121,20 +121,18 @@ impl Log for BlackBoxLogger {
 			let formatted = {
 				if record.metadata().level() == Level::Error {
 					format!(
-						"[{:.3}][{:?}][{}] {} ({:?}:{:?})",
+						"[{:.3}][{:?}] {} ({:?}:{:?})",
 						(Instant::now() - self.start_instant).as_secs_f32(),
 						record.level(),
-						record.module_path_static().unwrap_or("unknown"),
 						record.args(),
 						record.file_static().unwrap_or("unknown"),
 						record.line().unwrap_or(0)
 					)
 				} else {
 					format!(
-						"[{:.3}][{:?}][{}] {}",
+						"[{:.3}][{:?}] {}",
 						(Instant::now() - self.start_instant).as_secs_f32(),
 						record.level(),
-						record.module_path_static().unwrap_or("unknown"),
 						record.args(),
 					)
 				}

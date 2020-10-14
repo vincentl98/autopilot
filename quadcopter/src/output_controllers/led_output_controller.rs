@@ -33,14 +33,13 @@ impl OutputController<Option<LedColor>> for LedOutputController {
 			None => (High, High, High),
 			Some(color) => {
 				match color {
-					LedColor::White => (High, High, High),
+					LedColor::White => (Low, Low, Low),
 					LedColor::Green => (High, Low, High),
 					LedColor::Blue => (High, High, Low),
-					LedColor::Red => (Low, High, High, ),
-					_ => {
-						warn!("Color not implemented {:?}", color);
-						(Low, Low, Low)
-					},
+					LedColor::Red => (Low, High, High),
+					LedColor::Magenta => (Low, High, Low),
+					LedColor::Cyan => (High, Low, Low),
+					LedColor::Yellow => (Low, Low, High),
 				}
 			}
 		};

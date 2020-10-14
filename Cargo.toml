@@ -6,6 +6,7 @@ members = [
     "lsm9ds1",
     "navigation",
     "pid",
+    "pwm",
     "quadcopter",
 ]
 

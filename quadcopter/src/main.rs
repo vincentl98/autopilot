@@ -27,6 +27,10 @@ use crate::quadcopter::{QuadcopterOutputFrame, QuadcopterInputFrame, QuadcopterA
 use crate::output_controllers::led_output_controller::LedOutputController;
 use crate::input_controllers::lsm9ds1_input_controller::LSM9DS1InputController;
 use black_box::BlackBox;
+use crate::input_controllers::navio_adc_input_controller::NavioAdcInputController;
+use crate::input_controllers::navio_rc_input_controller::{NavioRcInputController, FLYSKY_RANGE};
+use std::convert::TryInto;
+use crate::output_controllers::navio_esc_output_controller::{NavioEscOutputController, QUADCOPTER_ESC_CHANNELS};
 
 fn main() {
 	std::env::set_var("RUST_BACKTRACE", "full");
@@ -45,15 +49,18 @@ fn main() {
 	let (led_sender, led_receiver) = unbounded::<Option<LedColor>>();
 	LedOutputController::new().unwrap().spawn(led_receiver);
 
+	let (esc_channels_sender, esc_channels_receiver) = unbounded::<[f32; QUADCOPTER_ESC_CHANNELS]>();
+	NavioEscOutputController::new([0, 1, 2, 3]).unwrap().spawn(esc_channels_receiver);
+
 	// Dispatcher
 	let (output_frame_sender, output_frame_receiver) = unbounded::<QuadcopterOutputFrame>();
-	let dispatcher = quadcopter::QuadcopterDispatcher { led_sender };
+	let dispatcher = quadcopter::QuadcopterDispatcher { led_sender, esc_channels_sender };
 
 	dispatcher.spawn(output_frame_receiver);
 
 	// Autopilot
 	let (input_frame_sender, input_frame_receiver) = unbounded::<QuadcopterInputFrame>();
-	QuadcopterAutopilot::new().spawn(input_frame_receiver, output_frame_sender);
+	QuadcopterAutopilot::new(1.5f32).spawn(input_frame_receiver, output_frame_sender);
 
 	// Collector
 	let (input_sender, input_receiver) = unbounded::<Input>();
@@ -62,13 +69,22 @@ fn main() {
 	collector.spawn(input_receiver, input_frame_sender);
 
 	// Input controllers
+	const NAVIO2_ACC_GYR_PATH: &'static str = "/dev/spidev0.3";
+	const NAVIO2_MAG_PATH: &'static str = "/dev/spidev0.2";
 
-	LSM9DS1InputController::new()
-		.unwrap()
-		.spawn(input_sender.clone());
+	let mut lsm9ds1 = LSM9DS1InputController::new(
+		NAVIO2_ACC_GYR_PATH,
+		NAVIO2_MAG_PATH).unwrap();
+	lsm9ds1.calibrate().unwrap();
+	lsm9ds1.spawn(input_sender.clone());
+
+	NavioAdcInputController::new().unwrap().spawn(input_sender.clone());
+
+	NavioRcInputController::new(FLYSKY_RANGE).unwrap().spawn(input_sender.clone());
 
 	armed_input_controller.spawn(input_sender.clone());
 
+	// Monitors
 	SystemInformationMonitor::new().spawn();
 
 	armed_sender.send(true).unwrap();
