@@ -12,6 +12,8 @@ mod input_controllers;
 mod monitors;
 mod output_controllers;
 mod quadcopter;
+mod quadcopter_autopilot;
+mod quadcopter_config;
 
 use crate::{
 	input_controllers::{
@@ -19,28 +21,31 @@ use crate::{
 	},
 	monitors::system_information_monitor::SystemInformationMonitor,
 };
+use black_box::BlackBox;
 use crossbeam_channel::unbounded;
 use log::LevelFilter;
 use std::{thread, time::Duration};
 use tini::Ini;
-use crate::quadcopter::{QuadcopterOutputFrame, QuadcopterInputFrame, QuadcopterAutopilot, QuadcopterCollector, LedColor};
+
+use crate::quadcopter::{QuadcopterOutputFrame, QuadcopterInputFrame, QuadcopterCollector, LedColor};
 use crate::output_controllers::led_output_controller::LedOutputController;
 use crate::input_controllers::lsm9ds1_input_controller::LSM9DS1InputController;
-use black_box::BlackBox;
 use crate::input_controllers::navio_adc_input_controller::NavioAdcInputController;
 use crate::input_controllers::navio_rc_input_controller::{NavioRcInputController, FLYSKY_RANGE};
-use std::convert::TryInto;
 use crate::output_controllers::navio_esc_output_controller::{NavioEscOutputController, QUADCOPTER_ESC_CHANNELS};
+use crate::quadcopter_autopilot::QuadcopterAutopilot;
+use std::convert::TryFrom;
 
 fn main() {
-	std::env::set_var("RUST_BACKTRACE", "full");
+	const CONFIG_FILE_PATH: &'static str = "config.ini";
+	let config_ini = Ini::from_file(CONFIG_FILE_PATH).unwrap();
 
-	info!("Autopilot {}", env!("CARGO_PKG_VERSION"));
-
-	let (level_filter) = read_config().expect("Failed to read configuration file");
+	let config = quadcopter_config::QuadcopterConfig::try_from(config_ini).unwrap();
 
 	let black_box = BlackBox::new();
-	black_box.spawn(level_filter);
+	black_box.spawn(config.log_level_filter);
+
+	info!("Autopilot {}", env!("CARGO_PKG_VERSION"));
 
 	let armed_input_controller = SoftArmInputController::new();
 	let armed_sender = armed_input_controller.sender();
@@ -50,7 +55,10 @@ fn main() {
 	LedOutputController::new().unwrap().spawn(led_receiver);
 
 	let (esc_channels_sender, esc_channels_receiver) = unbounded::<[f32; QUADCOPTER_ESC_CHANNELS]>();
-	NavioEscOutputController::new([0, 1, 2, 3]).unwrap().spawn(esc_channels_receiver);
+	NavioEscOutputController::new(config.output_esc_pins)
+		.init()
+		.unwrap()
+		.spawn(esc_channels_receiver);
 
 	// Dispatcher
 	let (output_frame_sender, output_frame_receiver) = unbounded::<QuadcopterOutputFrame>();
@@ -60,7 +68,10 @@ fn main() {
 
 	// Autopilot
 	let (input_frame_sender, input_frame_receiver) = unbounded::<QuadcopterInputFrame>();
-	QuadcopterAutopilot::new(1.5f32).spawn(input_frame_receiver, output_frame_sender);
+	QuadcopterAutopilot::new(config.ahrs_madgwick_beta,
+							 config.pid_roll,
+							 config.pid_pitch,
+							 config.pid_yaw).spawn(input_frame_receiver, output_frame_sender);
 
 	// Collector
 	let (input_sender, input_receiver) = unbounded::<Input>();
@@ -80,7 +91,7 @@ fn main() {
 
 	NavioAdcInputController::new().unwrap().spawn(input_sender.clone());
 
-	NavioRcInputController::new(FLYSKY_RANGE).unwrap().spawn(input_sender.clone());
+	NavioRcInputController::new(config.input_rc_range).unwrap().spawn(input_sender.clone());
 
 	armed_input_controller.spawn(input_sender.clone());
 
@@ -89,35 +100,10 @@ fn main() {
 
 	armed_sender.send(true).unwrap();
 
-	println!("Press enter to stop autopilot ...");
+	info!("Press enter to stop autopilot");
 	std::io::stdin().read_line(&mut String::new()).unwrap();
 
 	armed_sender.send(false).unwrap();
 
 	thread::sleep(Duration::from_millis(100));
-}
-
-fn read_config() -> anyhow::Result<(LevelFilter)> {
-	const CONFIG_FILE_NAME: &'static str = "autopilot.ini";
-
-	let config = Ini::from_file(CONFIG_FILE_NAME).expect("Failed to load configuration file");
-
-	const LOG_SECTION: &'static str = "log";
-	const LEVEL_FILTER: &'static str = "level";
-
-	let level_filter = match config
-		.get::<String>(LOG_SECTION, LEVEL_FILTER)
-		.unwrap()
-		.as_str()
-	{
-		"none" => LevelFilter::Off,
-		"error" => LevelFilter::Error,
-		"warn" => LevelFilter::Warn,
-		"info" => LevelFilter::Info,
-		"debug" => LevelFilter::Debug,
-		"all" => LevelFilter::Trace,
-		other => return Err(anyhow!("Invalid log level filter \"{}\"", other)),
-	};
-
-	Ok((level_filter))
 }

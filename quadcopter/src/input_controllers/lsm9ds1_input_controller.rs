@@ -31,6 +31,7 @@ impl LSM9DS1InputController {
 		let mut acc_average = Vector3::<f32>::zeros();
 		let mut gyr_average = Vector3::<f32>::zeros();
 
+		info!("Begin LSM9DS1 calibration");
 		for _ in 0..CALIBRATION_MEASUREMENTS {
 			let ([acc, gyr, _], _) = self.lsm9ds1.read_output()?;
 			acc_average = acc_average + acc;

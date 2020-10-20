@@ -23,6 +23,7 @@ enum Message {
 	Flush,
 }
 
+/// Thread that receives log messages and save them to file asynchronously
 pub struct BlackBox {
 	file: File,
 	buffer: VecDeque<String>,
@@ -106,11 +107,11 @@ impl BlackBox {
 	}
 }
 
-/// A `Log` implementation that logs verbosely
 struct BlackBoxLogger {
 	start_instant: Instant,
 }
 
+/// Log implementation that transmit log messages through channel
 impl Log for BlackBoxLogger {
 	fn enabled(&self, _: &Metadata) -> bool {
 		true

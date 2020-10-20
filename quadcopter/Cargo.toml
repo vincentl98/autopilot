@@ -16,6 +16,7 @@ pwm = { path = "../pwm" }
 anyhow = "1.0.33"
 chrono = "0.4.15"
 crossbeam-channel = "0.4.3"
+crossbeam-utils = "0.8.0"
 embedded-hal = "0.2.4" # Not using latest 1.0 because of breaking changes (`rppal` implements outdated traits)
 lazy_static = "1.4.0"
 log = "0.4.11"

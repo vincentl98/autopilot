@@ -1,5 +1,5 @@
 use nalgebra::Vector3;
-use std::time::{Instant, Duration};
+use std::time::{Instant};
 
 pub const G: f32 = 9.80665;
 
