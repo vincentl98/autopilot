@@ -1,5 +1,5 @@
 use spidev::{Spidev, SpidevOptions, SpiModeFlags, SpidevTransfer};
-use std::io::ErrorKind;
+use std::io::{ErrorKind, Write};
 use std::{thread, io};
 use std::time::{Duration, Instant};
 use nalgebra::Vector3;
@@ -8,7 +8,7 @@ use autopilot::{ImuData, G};
 
 use constants::*;
 use registers::*;
-use std::f32::consts::PI;
+use std::f64::consts::PI;
 
 /// LSM9DS1 driver using Linux `Spidev`
 pub struct LSM9DS1 {
@@ -73,6 +73,7 @@ impl LSM9DS1 {
 		const ACC_ENABLE_3_AXIS: u8 = XEN_ACC | YEN_ACC | ZEN_ACC;
 		self.acc_gyr.write_register(CTRL_REG5_ACC, ACC_ENABLE_3_AXIS)?;
 		self.acc_gyr.write_register(CTRL_REG6_ACC, ODR_ACC_952_HZ | FS_ACC_4G)?;
+		// self.acc_gyr.write_register(CTRL_REG7_ACC, ACC_HR | ACC_DCF_9 | ACC_FDS)?; // TODO: utile ?
 
 		thread::sleep(US_200);
 
@@ -88,34 +89,34 @@ impl LSM9DS1 {
 		Ok(self)
 	}
 
-	pub fn read_output(&mut self) -> Result<([Vector3<f32>; 3], Instant), io::Error> {
-		const ACC_4G_SCALE: f32 = 4. * G / i16::max_value() as f32;
-		const GYR_500_DPS_SCALE: f32 = 500. * PI / i16::max_value() as f32 / 180.;
-		const MAG_4G_SCALE: f32 = 4. / i16::max_value() as f32;
+	pub fn read_output(&mut self) -> Result<([Vector3<f64>; 3], Instant), io::Error> {
+		const ACC_4G_SCALE: f64 = 4. * G / i16::max_value() as f64;
+		const GYR_500_DPS_SCALE: f64 = - 500. * PI / i16::max_value() as f64 / 180.;
+		const MAG_4G_SCALE: f64 = 4. / i16::max_value() as f64;
 
 		let instant = Instant::now();
 
 		let acc_output = self.read_acc_or_gyr_output(OUT_X_L_ACC)?;
 
-		let acc_x = i16::from_le_bytes([acc_output[0], acc_output[1]]) as f32 * ACC_4G_SCALE;
-		let acc_y = i16::from_le_bytes([acc_output[2], acc_output[3]]) as f32 * ACC_4G_SCALE;
-		let acc_z = i16::from_le_bytes([acc_output[4], acc_output[5]]) as f32 * ACC_4G_SCALE;
+		let acc_x = i16::from_le_bytes([acc_output[0], acc_output[1]]) as f64 * ACC_4G_SCALE;
+		let acc_y = i16::from_le_bytes([acc_output[2], acc_output[3]]) as f64 * ACC_4G_SCALE;
+		let acc_z = i16::from_le_bytes([acc_output[4], acc_output[5]]) as f64 * ACC_4G_SCALE;
 
 		let gyr_output = self.read_acc_or_gyr_output(OUT_X_L_G)?;
 
-		let gyr_x = i16::from_le_bytes([gyr_output[0], gyr_output[1]]) as f32 * GYR_500_DPS_SCALE;
-		let gyr_y = i16::from_le_bytes([gyr_output[2], gyr_output[3]]) as f32 * GYR_500_DPS_SCALE;
-		let gyr_z = i16::from_le_bytes([gyr_output[4], gyr_output[5]]) as f32 * GYR_500_DPS_SCALE;
+		let gyr_x = i16::from_le_bytes([gyr_output[0], gyr_output[1]]) as f64 * GYR_500_DPS_SCALE;
+		let gyr_y = i16::from_le_bytes([gyr_output[2], gyr_output[3]]) as f64 * GYR_500_DPS_SCALE;
+		let gyr_z = i16::from_le_bytes([gyr_output[4], gyr_output[5]]) as f64 * GYR_500_DPS_SCALE;
 
 		let mag_output = self.read_mag_output(OUT_X_L_M)?;
 
-		let mag_x = i16::from_le_bytes([mag_output[0], mag_output[1]]) as f32 * MAG_4G_SCALE;
-		let mag_y = i16::from_le_bytes([mag_output[2], mag_output[3]]) as f32 * MAG_4G_SCALE;
-		let mag_z = i16::from_le_bytes([mag_output[4], mag_output[5]]) as f32 * MAG_4G_SCALE;
+		let mag_x = i16::from_le_bytes([mag_output[0], mag_output[1]]) as f64 * MAG_4G_SCALE;
+		let mag_y = i16::from_le_bytes([mag_output[2], mag_output[3]]) as f64 * MAG_4G_SCALE;
+		let mag_z = i16::from_le_bytes([mag_output[4], mag_output[5]]) as f64 * MAG_4G_SCALE;
 
-		let acc = Vector3::<f32>::new(acc_x, acc_y, acc_z);
-		let gyr = Vector3::<f32>::new(gyr_x, gyr_y, gyr_z);
-		let mag = Vector3::<f32>::new(mag_x, mag_y, mag_z);
+		let acc = Vector3::<f64>::new(acc_x, acc_y, acc_z);
+		let gyr = Vector3::<f64>::new(gyr_x, gyr_y, gyr_z);
+		let mag = Vector3::<f64>::new(mag_x, mag_y, mag_z);
 
 		Ok(([acc, gyr, mag], instant))
 	}
@@ -244,6 +245,10 @@ mod registers {
 
 #[allow(dead_code)]
 mod constants {
+	pub const ACC_HR: u8 = 1 << 7;
+	pub const ACC_DCF_9: u8 = 1 << 6;
+	pub const ACC_FDS: u8 = 1 << 2;
+
 	pub const READ_FLAG: u8 = 0x80;
 	pub const ACC_GYR_MULTIPLE_READ_FLAG: u8 = READ_FLAG | 0x40;
 

@@ -8,7 +8,7 @@ edition = "2018"
 autopilot = { path = "../autopilot" }
 
 [dependencies.nalgebra]
-version = "0.22"
+version = "0.23"
 
 [dependencies.simba]
 version = "0.2"

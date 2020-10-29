@@ -70,7 +70,6 @@ impl BlackBox {
 
 	fn flush(&mut self) -> Result<(), Box<dyn Error>> {
 		while let Some(message) = self.buffer.pop_front() {
-			println!("{}", message);
 			writeln!(self.file, "{}", message)?;
 		}
 		Ok(())
@@ -81,11 +80,14 @@ impl BlackBox {
 
 		while let Ok(message) = BLACK_BOX_CHANNEL.1.recv_timeout(RECEIVE_TIMEOUT) {
 			match message {
-				Message::Log(content) => self.buffer.push_back(content),
+				Message::Log(content) => {
+					println!("{}", &content);
+					self.buffer.push_back(content)
+				},
 				Message::Flush => self.try_flush(),
 			}
 
-			const MAX_BUFFER_LEN: usize = 8;
+			const MAX_BUFFER_LEN: usize = 64;
 			if self.buffer.len() > MAX_BUFFER_LEN {
 				self.try_flush();
 			}

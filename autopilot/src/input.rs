@@ -1,44 +1,59 @@
-use nalgebra::Vector3;
+use nalgebra::{Vector3, UnitQuaternion, RealField, zero};
 use std::time::{Instant};
+use std::fmt::{Display, Formatter};
+use std::fmt;
 
-pub const G: f32 = 9.80665;
+pub const G: f64 = 9.80665;
 
 #[derive(Clone, Debug)]
-pub struct ImuData {
-	pub acc: Vector3<f32>,
-	pub gyr: Vector3<f32>,
-	pub mag: Vector3<f32>,
+pub struct ImuData<N: RealField> {
+	pub acc: Vector3<N>,
+	pub gyr: Vector3<N>,
+	pub mag: Vector3<N>,
 	pub instant: Instant,
 }
 
-impl Default for ImuData {
+impl<N: RealField> Default for ImuData<N> {
 	fn default() -> Self {
 		ImuData {
-			acc: Vector3::default(),
-			gyr: Vector3::default(),
-			mag: Vector3::default(),
+			acc: zero(),
+			gyr: zero(),
+			mag: zero(),
 			instant: Instant::now(),
 		}
 	}
 }
 
 #[derive(Clone, Debug, Default)]
-pub struct NavioAdcData {
-	pub board_voltage: f32,
-	pub servo_voltage: f32,
-	pub external_voltage: f32,
-	pub external_current: f32,
-	pub adc_port_2: f32,
-	pub adc_port_3: f32,
+pub struct NavioAdcData<N: RealField> {
+	pub board_voltage: N,
+	pub servo_voltage: N,
+	pub external_voltage: N,
+	pub external_current: N,
+	pub adc_port_2: N,
+	pub adc_port_3: N,
 }
 
-pub type RcChannels = Option<[f32; 16]>;
+impl<N: RealField> Display for NavioAdcData<N> {
+	fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+		Ok(write!(
+			f,
+			"Ext. voltage: {:.1} V, \
+			 Ext. current: {:.1} A, \
+			 Board voltage: {:.1} V",
+			self.external_voltage,
+			self.external_current,
+			self.board_voltage,
+		)?)
+	}
+}
+
+pub type RcChannels<N> = Option<[N; 16]>;
 
 #[derive(Clone, Debug)]
-#[allow(dead_code)]
-pub enum Input {
-	RcChannels(RcChannels),
-	NavioAdc(NavioAdcData),
-	Imu(ImuData),
+pub enum Input<N: RealField> {
+	RcChannels(RcChannels<N>),
+	NavioAdc(NavioAdcData<N>),
+	Orientation((UnitQuaternion<N>, Instant)),
 	SoftArmed(bool),
 }

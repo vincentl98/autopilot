@@ -1,13 +1,9 @@
 [package]
-name = "pid"
+name = "dsp"
 version = "0.1.0"
 authors = ["vincent <vincent.leporcher@telecom-paris.fr>"]
 edition = "2018"
 
 [dependencies]
-dsp = { path = "../dsp" }
-log = "0.4.11"
-nalgebra = "0.23"
-
-[dev-dependencies]
-assert_approx_eq = "1.1.0"
+nalgebra = "0.23.0"
+num-traits = "0.2.12"

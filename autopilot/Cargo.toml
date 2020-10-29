@@ -16,7 +16,7 @@ rppal = { version = "0.11.3", features = ["hal-unproven"] }
 spidev = "0.4.0"
 systemstat = "0.1.5"
 tini = "0.4.0"
-nalgebra = "0.22.0"
+nalgebra = "0.23"
 
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"

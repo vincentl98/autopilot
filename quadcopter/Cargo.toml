@@ -9,6 +9,7 @@ edition = "2018"
 ahrs = { path = "../ahrs" }
 autopilot = { path = "../autopilot" }
 black_box = { path = "../black_box" }
+dsp = { path = "../dsp" }
 lsm9ds1 = { path = "../lsm9ds1" }
 pid = { path = "../pid" }
 pwm = { path = "../pwm" }
@@ -20,7 +21,7 @@ crossbeam-utils = "0.8.0"
 embedded-hal = "0.2.4" # Not using latest 1.0 because of breaking changes (`rppal` implements outdated traits)
 lazy_static = "1.4.0"
 log = "0.4.11"
-nalgebra = "0.22.0"
+nalgebra = "0.23.0"
 num-traits = "0.2.12"
 rppal = { version = "0.11.3", features = ["hal-unproven"] }
 spidev = "0.4.0"

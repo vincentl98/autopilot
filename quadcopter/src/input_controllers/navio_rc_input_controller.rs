@@ -9,12 +9,12 @@ pub struct NavioRcInputController {
 	channel_files: [File; CHANNELS],
 	connected_file: File,
 	range: (u16, u16),
-	inv_range: f32,
+	inv_range: f64,
 }
 
 const RC_IN_PATH: &'static str = "/sys/kernel/rcio/rcin";
 pub const CHANNELS: usize = 16;
-pub const FLYSKY_RANGE: (u16, u16) = (1024, 2003);
+// pub const FLYSKY_RANGE: (u16, u16) = (1024, 2003);
 
 impl NavioRcInputController {
 	pub fn new(range: (u16, u16)) -> Result<Self, io::Error> {
@@ -44,7 +44,7 @@ impl NavioRcInputController {
 			channel_files,
 			connected_file,
 			range,
-			inv_range: 1. / (range.1 - range.0) as f32
+			inv_range: 1. / (range.1 - range.0) as f64
 		})
 	}
 
@@ -55,7 +55,7 @@ impl NavioRcInputController {
 		Ok(s.trim().parse::<u16>()?)
 	}
 
-	fn normalized_channel(&self, channel: u16) -> f32 {
+	fn normalized_channel(&self, channel: u16) -> f64 {
 		// There is no documented max/min values as it is a proprietary protocol. However, these
 		// values seem to be the most extreme possible. Theoretical range is 0-2047 as each channel
 		// is encoded as 11 bits, but most transmitters won't go below/above the constants below.
@@ -63,7 +63,7 @@ impl NavioRcInputController {
 		// const MIN: u16 = 172;
 		// const MAX: u16 = 1811;
 
-		(channel.min(self.range.1).max(self.range.0) - self.range.0) as f32 * self.inv_range
+		(channel.min(self.range.1).max(self.range.0) - self.range.0) as f64 * self.inv_range
 	}
 
 }
@@ -72,7 +72,7 @@ impl InputController for NavioRcInputController {
 	const DELAY: Option<Duration> = Some(Duration::from_millis(20));
 
 	fn read_input(&mut self) -> Result<Input, Box<dyn Error>> {
-		let mut channels = [0f32; CHANNELS];
+		let mut channels = [0.; CHANNELS];
 
 		for i in 0..CHANNELS {
 			let raw_channel = Self::channel_parse(&mut self.channel_files[i])?;

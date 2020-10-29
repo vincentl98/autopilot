@@ -31,16 +31,18 @@ use crate::quadcopter::{QuadcopterOutputFrame, QuadcopterInputFrame, QuadcopterC
 use crate::output_controllers::led_output_controller::LedOutputController;
 use crate::input_controllers::lsm9ds1_input_controller::LSM9DS1InputController;
 use crate::input_controllers::navio_adc_input_controller::NavioAdcInputController;
-use crate::input_controllers::navio_rc_input_controller::{NavioRcInputController, FLYSKY_RANGE};
+use crate::input_controllers::navio_rc_input_controller::{NavioRcInputController};
 use crate::output_controllers::navio_esc_output_controller::{NavioEscOutputController, QUADCOPTER_ESC_CHANNELS};
 use crate::quadcopter_autopilot::QuadcopterAutopilot;
 use std::convert::TryFrom;
+use ahrs::{Madgwick, Mahony};
+use nalgebra::Vector3;
 
 fn main() {
 	const CONFIG_FILE_PATH: &'static str = "config.ini";
 	let config_ini = Ini::from_file(CONFIG_FILE_PATH).unwrap();
 
-	let config = quadcopter_config::QuadcopterConfig::try_from(config_ini).unwrap();
+	let config = quadcopter_config::QuadcopterConfig::try_from(&config_ini).unwrap();
 
 	let black_box = BlackBox::new();
 	black_box.spawn(config.log_level_filter);
@@ -54,7 +56,7 @@ fn main() {
 	let (led_sender, led_receiver) = unbounded::<Option<LedColor>>();
 	LedOutputController::new().unwrap().spawn(led_receiver);
 
-	let (esc_channels_sender, esc_channels_receiver) = unbounded::<[f32; QUADCOPTER_ESC_CHANNELS]>();
+	let (esc_channels_sender, esc_channels_receiver) = unbounded::<[f64; QUADCOPTER_ESC_CHANNELS]>();
 	NavioEscOutputController::new(config.output_esc_pins)
 		.init()
 		.unwrap()
@@ -68,8 +70,7 @@ fn main() {
 
 	// Autopilot
 	let (input_frame_sender, input_frame_receiver) = unbounded::<QuadcopterInputFrame>();
-	QuadcopterAutopilot::new(config.ahrs_madgwick_beta,
-							 config.pid_roll,
+	QuadcopterAutopilot::new(config.pid_roll,
 							 config.pid_pitch,
 							 config.pid_yaw).spawn(input_frame_receiver, output_frame_sender);
 
@@ -85,8 +86,39 @@ fn main() {
 
 	let mut lsm9ds1 = LSM9DS1InputController::new(
 		NAVIO2_ACC_GYR_PATH,
-		NAVIO2_MAG_PATH).unwrap();
-	lsm9ds1.calibrate().unwrap();
+		NAVIO2_MAG_PATH,
+		config.filter_accelerometer,
+		config.filter_gyroscope,
+		Mahony::<f64>::new(0.5, 0.0),
+	).unwrap();
+
+	let flat_trim = {
+		let args: Vec<String> = std::env::args().collect();
+		if args.len() > 1 && args[1] == "--flat-trim" {
+			true
+		} else {
+			false
+		}
+	};
+
+	if flat_trim {
+		info!("Performing flat trim calibration");
+
+		let (acc_offset, gyr_offset) = lsm9ds1.calibrate().unwrap();
+
+		lsm9ds1.set_calibration(acc_offset.clone().into(),
+								gyr_offset.clone().into());
+
+		config_ini
+			.section("offset")
+			.item_vec("acc", &[acc_offset.x, acc_offset.y, acc_offset.z])
+			.item_vec("gyr", &[gyr_offset.x, gyr_offset.y, gyr_offset.z])
+			.to_file(CONFIG_FILE_PATH).unwrap();
+	} else {
+		info!("Using previously saved calibration");
+		lsm9ds1.set_calibration(config.offset_acc, config.offset_gyr);
+	}
+
 	lsm9ds1.spawn(input_sender.clone());
 
 	NavioAdcInputController::new().unwrap().spawn(input_sender.clone());

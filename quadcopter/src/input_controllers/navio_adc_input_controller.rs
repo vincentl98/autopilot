@@ -51,8 +51,8 @@ impl NavioAdcInputController {
 		})
 	}
 
-	pub fn read_channel(&self, channel: u8) -> Result<f32, Box<dyn Error>> {
-		let raw_value = Self::channel_parse(channel)? as f32 / 1000.;
+	pub fn read_channel(&self, channel: u8) -> Result<f64, Box<dyn Error>> {
+		let raw_value = Self::channel_parse(channel)? as f64 / 1000.;
 		Ok(match channel {
 			channels::EXTERNAL_CURRENT => raw_value * 17.0,
 			channels::EXTERNAL_VOLTAGE => raw_value * 11.3,
@@ -70,6 +70,11 @@ impl InputController for NavioAdcInputController {
 	const DELAY: Option<Duration> = Some(Duration::from_secs(1));
 
 	fn read_input(&mut self) -> Result<Input, Box<dyn Error>> {
-		self.read_channels().map(Input::NavioAdc)
+		self.read_channels()
+			.map(|channels| {
+			info!("{}", channels);
+			channels
+		})
+			.map(Input::NavioAdc)
 	}
 }

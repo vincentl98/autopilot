@@ -28,7 +28,6 @@ use std::io::Write;
 use std::os::unix::fs::{MetadataExt, PermissionsExt};
 use std::path::Path;
 use std::ptr;
-use std::result;
 use std::thread;
 use std::time::Duration;
 
