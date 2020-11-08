@@ -9,9 +9,6 @@ adc.init() function initialize 6 ADC channels. After that it's possible to read 
  */
 
 use std::{io, fs};
-use std::fs::File;
-use std::str::FromStr;
-use std::io::Read;
 use std::error::Error;
 use autopilot::{InputController, Input, NavioAdcData};
 use systemstat::Duration;
@@ -40,7 +37,7 @@ impl NavioAdcInputController {
 		Ok(Self)
 	}
 
-	pub fn read_channels(&self) -> Result<NavioAdcData, Box<dyn Error>> {
+	pub fn read_channels(&self) -> Result<NavioAdcData<f64>, Box<dyn Error>> {
 		Ok(NavioAdcData {
 			board_voltage: self.read_channel(channels::BOARD_VOLTAGE)?,
 			servo_voltage: self.read_channel(channels::SERVO_VOLTAGE)?,
@@ -72,7 +69,7 @@ impl InputController for NavioAdcInputController {
 	fn read_input(&mut self) -> Result<Input, Box<dyn Error>> {
 		self.read_channels()
 			.map(|channels| {
-			info!("{}", channels);
+			debug!(target: "adc", "{}", channels);
 			channels
 		})
 			.map(Input::NavioAdc)

@@ -1,4 +1,4 @@
-use nalgebra::{Quaternion, Scalar, Vector2, Vector3, UnitQuaternion, Unit, RealField};
+use nalgebra::{Quaternion, Vector3, UnitQuaternion, RealField};
 use crate::{AhrsError, Ahrs};
 
 #[derive(Debug)]
@@ -99,7 +99,7 @@ impl<N: RealField> Ahrs<N> for Mahony<N> {
 		gyroscope: &Vector3<N>,
 		accelerometer: &Vector3<N>,
 		dt: N,
-	) -> Result<UnitQuaternion<N>, AhrsError> {
+	) -> Result<(), AhrsError> {
 		let q = self.quat;
 
 		let zero: N = nalgebra::zero();
@@ -107,7 +107,7 @@ impl<N: RealField> Ahrs<N> for Mahony<N> {
 		let half: N = nalgebra::convert(0.5);
 
 		// Normalize accelerometer measurement
-		if let Some(n) = accelerometer.try_normalize(zero) {
+		if let Some(_n) = accelerometer.try_normalize(zero) {
 			#[rustfmt::skip]
 				let v = Vector3::new(
 				two * (q[0] * q[2] - q[3] * q[1]),
@@ -135,6 +135,10 @@ impl<N: RealField> Ahrs<N> for Mahony<N> {
 			// Integrate to yield quaternion
 			self.quat = (q + q_dot * dt).normalize();
 		}
-		Ok(UnitQuaternion::from_quaternion(self.quat.clone()))
+		Ok(())
+	}
+
+	fn quaternion(&self) -> UnitQuaternion<N> {
+		UnitQuaternion::from_quaternion(self.quat.clone())
 	}
 }

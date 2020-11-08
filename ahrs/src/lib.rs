@@ -10,6 +10,10 @@ pub enum AhrsError {
 	NormalizationError,
 }
 
-trait Ahrs<N: RealField> {
-	fn update_imu(&mut self, gyroscope: &Vector3<N>, accelerometer: &Vector3<N>, dt: N) -> Result<UnitQuaternion<N>, AhrsError>;
+pub trait Ahrs<N: RealField> where Self: Send + Sync + 'static {
+	fn update_imu(&mut self,
+				  gyroscope: &Vector3<N>,
+				  accelerometer: &Vector3<N>,
+				  dt: N) -> Result<(), AhrsError>;
+	fn quaternion(&self) -> UnitQuaternion<N>;
 }

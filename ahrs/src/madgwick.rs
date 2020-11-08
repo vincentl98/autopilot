@@ -1,5 +1,4 @@
-use nalgebra::{Matrix4, Quaternion, Scalar, Vector3, Vector4, UnitQuaternion, RealField};
-use simba::simd::SimdValue;
+use nalgebra::{Matrix4, Quaternion, Vector3, Vector4, UnitQuaternion, RealField};
 use crate::{AhrsError, Ahrs};
 
 #[derive(Debug)]
@@ -83,7 +82,7 @@ impl<N: RealField> Ahrs<N> for Madgwick<N> {
 	fn update_imu(&mut self,
 					  gyroscope: &Vector3<N>,
 					  accelerometer: &Vector3<N>,
-					  dt: N) -> Result<UnitQuaternion<N>, AhrsError> {
+					  dt: N) -> Result<(), AhrsError> {
 		let q = &self.quaternion;
 
 		let zero: N = nalgebra::zero();
@@ -99,7 +98,7 @@ impl<N: RealField> Ahrs<N> for Madgwick<N> {
 
 		// Gradient descent algorithm corrective step
 		#[rustfmt::skip]
-			let F = Vector4::new(
+			let f = Vector4::new(
 			two * (q[0] * q[2] - q[3] * q[1]) - accel[0],
 			two * (q[3] * q[0] + q[1] * q[2]) - accel[1],
 			two * (half - q[0] * q[0] - q[1] * q[1]) - accel[2],
@@ -107,14 +106,14 @@ impl<N: RealField> Ahrs<N> for Madgwick<N> {
 		);
 
 		#[rustfmt::skip]
-			let J_t = Matrix4::new(
+			let j_t = Matrix4::new(
 			-two * q[1], two * q[0], zero, zero,
 			two * q[2], two * q[3], -four * q[0], zero,
 			-two * q[3], two * q[2], -four * q[1], zero,
 			two * q[0], two * q[1], zero, zero,
 		);
 
-		let step = (J_t * F).normalize();
+		let step = (j_t * f).normalize();
 
 		// Compute rate of change of quaternion
 		let q_dot = (q * Quaternion::from_parts(zero, *gyroscope)) * half
@@ -123,7 +122,11 @@ impl<N: RealField> Ahrs<N> for Madgwick<N> {
 		// Integrate to yield quaternion
 		self.quaternion = (q + q_dot * dt).normalize();
 
-		Ok(UnitQuaternion::from_quaternion(self.quaternion.clone()))
+		Ok(())
+	}
+
+	fn quaternion(&self) -> UnitQuaternion<N> {
+		UnitQuaternion::from_quaternion(self.quaternion.clone())
 	}
 }
 

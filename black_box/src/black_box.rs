@@ -83,7 +83,7 @@ impl BlackBox {
 				Message::Log(content) => {
 					println!("{}", &content);
 					self.buffer.push_back(content)
-				},
+				}
 				Message::Flush => self.try_flush(),
 			}
 
@@ -103,9 +103,7 @@ impl BlackBox {
 			.map(|()| log::set_max_level(level_filter))
 			.unwrap();
 
-		thread::spawn(move || loop {
-			self.receive_loop()
-		})
+		thread::spawn(move || loop { self.receive_loop() })
 	}
 }
 
@@ -122,22 +120,20 @@ impl Log for BlackBoxLogger {
 	fn log(&self, record: &Record) {
 		if self.enabled(record.metadata()) {
 			let formatted = {
+				let head = format!("[{:.3}][{}]",
+								   (Instant::now() - self.start_instant).as_secs_f32(),
+								   record.target());
+
 				if record.metadata().level() == Level::Error {
 					format!(
-						"[{:.3}][{:?}] {} ({:?}:{:?})",
-						(Instant::now() - self.start_instant).as_secs_f32(),
-						record.level(),
+						"{} Error: {} ({:?}:{:?})",
+						head,
 						record.args(),
 						record.file_static().unwrap_or("unknown"),
 						record.line().unwrap_or(0)
 					)
 				} else {
-					format!(
-						"[{:.3}][{:?}] {}",
-						(Instant::now() - self.start_instant).as_secs_f32(),
-						record.level(),
-						record.args(),
-					)
+					format!("{} {}", head, record.args())
 				}
 			};
 			BLACK_BOX_CHANNEL.0.send(Message::Log(formatted)).unwrap();

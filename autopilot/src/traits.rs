@@ -6,7 +6,6 @@ use std::{
 	thread,
 	time::{Duration, Instant},
 };
-use nalgebra::RealField;
 
 pub trait Autopilot<In, Out>
 	where
@@ -41,13 +40,13 @@ pub trait Autopilot<In, Out>
 }
 
 /// Controllers that filters and buffers asynchronous inputs
-pub trait Collector<F: Send + 'static, N: RealField>
+pub trait Collector<F: Send + 'static>
 	where
 		Self: Sized + Send + 'static,
 {
-	fn collect(&mut self, input: Input<N>) -> F;
+	fn collect(&mut self, input: Input) -> F;
 
-	fn collect_loop(&mut self, receiver: Receiver<Input<N>>, sender: Sender<F>) -> ! {
+	fn collect_loop(&mut self, receiver: Receiver<Input>, sender: Sender<F>) -> ! {
 		for input in receiver {
 			sender.send(self.collect(input)).unwrap();
 		}
@@ -55,7 +54,7 @@ pub trait Collector<F: Send + 'static, N: RealField>
 		unreachable!()
 	}
 
-	fn spawn(mut self, receiver: Receiver<Input<N>>, sender: Sender<F>) -> thread::JoinHandle<()> {
+	fn spawn(mut self, receiver: Receiver<Input>, sender: Sender<F>) -> thread::JoinHandle<()> {
 		thread::spawn(move || self.collect_loop(receiver, sender))
 	}
 }
@@ -81,16 +80,16 @@ pub trait Dispatcher<F: Send + Sized + 'static>
 }
 
 /// Controllers that import external data.
-pub trait InputController<N: RealField>
+pub trait InputController
 	where
 		Self: Sized + Send + 'static,
 {
 	/// Minimum duration to wait between two successive `read_input` calls.
 	const DELAY: Option<Duration>;
 
-	fn read_input(&mut self) -> Result<Input<N>, Box<dyn Error>>;
+	fn read_input(&mut self) -> Result<Input, Box<dyn Error>>;
 
-	fn read_loop(&mut self, input_sender: Sender<Input<N>>) -> ! {
+	fn read_loop(&mut self, input_sender: Sender<Input>) -> ! {
 		loop {
 			match self.read_input() {
 				Ok(input) => input_sender.send(input).unwrap(),
@@ -105,7 +104,7 @@ pub trait InputController<N: RealField>
 
 	/// Spawns a thread running `read_loop`. It is expected that the input controller is ready to
 	/// read when spawned, i.e. that the initialization (if any) is done.
-	fn spawn(mut self, input_sender: Sender<Input<N>>) -> thread::JoinHandle<()> {
+	fn spawn(mut self, input_sender: Sender<Input>) -> thread::JoinHandle<()> {
 		thread::spawn(move || self.read_loop(input_sender))
 	}
 }

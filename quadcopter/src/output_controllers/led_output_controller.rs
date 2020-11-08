@@ -1,4 +1,4 @@
-use rppal::gpio::{OutputPin, Gpio, Level};
+use rppal::gpio::{OutputPin, Gpio};
 use std::error::Error;
 use rppal::gpio::Level::{Low, High};
 

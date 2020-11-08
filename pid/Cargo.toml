@@ -6,7 +6,6 @@ edition = "2018"
 
 [dependencies]
 dsp = { path = "../dsp" }
-log = "0.4.11"
 nalgebra = "0.23"
 
 [dev-dependencies]

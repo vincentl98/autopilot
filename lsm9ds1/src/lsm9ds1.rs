@@ -1,10 +1,10 @@
 use spidev::{Spidev, SpidevOptions, SpiModeFlags, SpidevTransfer};
-use std::io::{ErrorKind, Write};
+use std::io::{ErrorKind};
 use std::{thread, io};
 use std::time::{Duration, Instant};
 use nalgebra::Vector3;
 
-use autopilot::{ImuData, G};
+use autopilot::{G};
 
 use constants::*;
 use registers::*;

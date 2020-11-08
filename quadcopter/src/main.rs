@@ -6,46 +6,40 @@ extern crate anyhow;
 #[macro_use]
 extern crate log;
 
-use autopilot::{Input, Dispatcher, Autopilot, Collector, InputController, OutputController, Monitor};
+use crossbeam_channel::unbounded;
+use nalgebra::Vector3;
+
+use crate::config::TryIntoLevelFilter;
+use crate::input_controllers::soft_arm_input_controller::SoftArmInputController;
+use crate::input_controllers::navio_adc_input_controller::NavioAdcInputController;
+use crate::monitors::system_information_monitor::SystemInformationMonitor;
+use crate::input_controllers::navio_rc_input_controller::NavioRcInputController;
+use crate::quadcopter::{LedColor, QuadcopterOutputFrame, QuadcopterInputFrame, QuadcopterCollector};
+use crate::output_controllers::led_output_controller::LedOutputController;
+use crate::output_controllers::navio_esc_output_controller::{QUADCOPTER_ESC_CHANNELS, NavioEscOutputController};
+use crate::quadcopter_autopilot::QuadcopterAutopilot;
+use crate::input_controllers::lsm9ds1_input_controller::LSM9DS1InputController;
+
+use autopilot::*;
+use ahrs::Madgwick;
+use black_box::BlackBox;
 
 mod input_controllers;
 mod monitors;
 mod output_controllers;
 mod quadcopter;
 mod quadcopter_autopilot;
-mod quadcopter_config;
-
-use crate::{
-	input_controllers::{
-		soft_arm_input_controller::SoftArmInputController,
-	},
-	monitors::system_information_monitor::SystemInformationMonitor,
-};
-use black_box::BlackBox;
-use crossbeam_channel::unbounded;
-use log::LevelFilter;
-use std::{thread, time::Duration};
-use tini::Ini;
-
-use crate::quadcopter::{QuadcopterOutputFrame, QuadcopterInputFrame, QuadcopterCollector, LedColor};
-use crate::output_controllers::led_output_controller::LedOutputController;
-use crate::input_controllers::lsm9ds1_input_controller::LSM9DS1InputController;
-use crate::input_controllers::navio_adc_input_controller::NavioAdcInputController;
-use crate::input_controllers::navio_rc_input_controller::{NavioRcInputController};
-use crate::output_controllers::navio_esc_output_controller::{NavioEscOutputController, QUADCOPTER_ESC_CHANNELS};
-use crate::quadcopter_autopilot::QuadcopterAutopilot;
-use std::convert::TryFrom;
-use ahrs::{Madgwick, Mahony};
-use nalgebra::Vector3;
+mod config;
+mod roll_pitch_yaw;
+mod mixer;
 
 fn main() {
-	const CONFIG_FILE_PATH: &'static str = "config.ini";
-	let config_ini = Ini::from_file(CONFIG_FILE_PATH).unwrap();
-
-	let config = quadcopter_config::QuadcopterConfig::try_from(&config_ini).unwrap();
+	let mut config = config::read().unwrap();
 
 	let black_box = BlackBox::new();
-	black_box.spawn(config.log_level_filter);
+	black_box.spawn(config.log_level_filter
+		.try_into_level_filter()
+		.unwrap());
 
 	info!("Autopilot {}", env!("CARGO_PKG_VERSION"));
 
@@ -70,9 +64,8 @@ fn main() {
 
 	// Autopilot
 	let (input_frame_sender, input_frame_receiver) = unbounded::<QuadcopterInputFrame>();
-	QuadcopterAutopilot::new(config.pid_roll,
-							 config.pid_pitch,
-							 config.pid_yaw).spawn(input_frame_receiver, output_frame_sender);
+	QuadcopterAutopilot::new(config.pid_values, config.rates, config.limits)
+		.spawn(input_frame_receiver, output_frame_sender);
 
 	// Collector
 	let (input_sender, input_receiver) = unbounded::<Input>();
@@ -87,9 +80,7 @@ fn main() {
 	let mut lsm9ds1 = LSM9DS1InputController::new(
 		NAVIO2_ACC_GYR_PATH,
 		NAVIO2_MAG_PATH,
-		config.filter_accelerometer,
-		config.filter_gyroscope,
-		Mahony::<f64>::new(0.5, 0.0),
+		Madgwick::<f64>::new(config.ahrs_madgwick_beta),
 	).unwrap();
 
 	let flat_trim = {
@@ -106,17 +97,24 @@ fn main() {
 
 		let (acc_offset, gyr_offset) = lsm9ds1.calibrate().unwrap();
 
-		lsm9ds1.set_calibration(acc_offset.clone().into(),
-								gyr_offset.clone().into());
+		lsm9ds1.set_calibration(acc_offset.clone(),
+								gyr_offset.clone());
 
-		config_ini
-			.section("offset")
-			.item_vec("acc", &[acc_offset.x, acc_offset.y, acc_offset.z])
-			.item_vec("gyr", &[gyr_offset.x, gyr_offset.y, gyr_offset.z])
-			.to_file(CONFIG_FILE_PATH).unwrap();
+		config.calibration_acc = [acc_offset.x, acc_offset.y, acc_offset.z];
+		config.calibration_gyr = [gyr_offset.x, gyr_offset.y, gyr_offset.z];
+
+		config::save(&config).unwrap();
 	} else {
 		info!("Using previously saved calibration");
-		lsm9ds1.set_calibration(config.offset_acc, config.offset_gyr);
+		let acc_offset = Vector3::new(config.calibration_acc[0],
+									  config.calibration_acc[1],
+									  config.calibration_acc[2]);
+
+		let gyr_offset = Vector3::new(config.calibration_gyr[0],
+									  config.calibration_gyr[1],
+									  config.calibration_gyr[2]);
+
+		lsm9ds1.set_calibration(acc_offset, gyr_offset);
 	}
 
 	lsm9ds1.spawn(input_sender.clone());
@@ -137,5 +135,5 @@ fn main() {
 
 	armed_sender.send(false).unwrap();
 
-	thread::sleep(Duration::from_millis(100));
+	std::thread::sleep(std::time::Duration::from_millis(100));
 }

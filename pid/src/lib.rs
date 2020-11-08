@@ -2,11 +2,9 @@
 #[macro_use]
 extern crate assert_approx_eq;
 
-#[macro_use]
-extern crate log;
 
 use std::{fmt::Display, time::Instant};
-use dsp::AlphaBetaFilter;
+use dsp::{ScalarAlphaBeta};
 use nalgebra::{RealField, Vector3};
 
 pub struct Pid<N: RealField> {
@@ -16,6 +14,7 @@ pub struct Pid<N: RealField> {
 	last_input: Option<(N, Instant)>,
 	last_output: Option<N>,
 	limits: Option<(N, N)>,
+	d_term_filter: ScalarAlphaBeta<N>,
 }
 
 impl<N: RealField + From<f64> + Display> Pid<N> {
@@ -27,6 +26,7 @@ impl<N: RealField + From<f64> + Display> Pid<N> {
 			last_input: None,
 			last_output: None,
 			limits,
+			d_term_filter: ScalarAlphaBeta::new(N::from(0.008), N::from(0.0005)),
 		}
 	}
 
@@ -35,8 +35,10 @@ impl<N: RealField + From<f64> + Display> Pid<N> {
 	}
 
 	pub fn set_setpoint(&mut self, target: N) {
-		self.target = target;
-		self.reset();
+		if target != self.target {
+			self.target = target;
+			self.reset();
+		}
 	}
 
 	pub fn reset(&mut self) {
@@ -45,7 +47,6 @@ impl<N: RealField + From<f64> + Display> Pid<N> {
 		self.last_input = None;
 	}
 
-	/// It is guaranteed to have a strictly positive time delta
 	fn estimate_with_new_input(&mut self, input: N, input_read_instant: Instant) -> N {
 		let error = self.target - input;
 
@@ -55,18 +56,14 @@ impl<N: RealField + From<f64> + Display> Pid<N> {
 			if let Some((last_input, last_instant)) = self.last_input {
 				let dt: N = (input_read_instant - last_instant).as_secs_f64().into();
 
-				assert!(dt != N::zero()); // TODO: bof bof
 				self.error_integral = self.error_integral + self.k.1 * dt * error;
 
-				let d = {
-					if dt != N::zero() {
-						self.k.2 * (last_input - input) / dt
-					} else {
-						N::zero()
-					}
-				};
+				let filtered_d_term = self.d_term_filter.update(Vector3::new(
+					- self.k.2 * (last_input - input),
+					N::zero(),
+					N::zero()), dt); // TODO: hack
 
-					(self.error_integral, d) // Note: d(err)/dt = - d(input)/dt
+				(self.error_integral, filtered_d_term.x / dt) // Note: d(err)/dt = - d(input)/dt
 			} else {
 				(N::zero(), N::zero())
 			}
@@ -74,7 +71,6 @@ impl<N: RealField + From<f64> + Display> Pid<N> {
 
 		let output = {
 			let output = p + i + d;
-			trace!("PID: {} {} {}", p, i, d);
 			if let Some((a, b)) = self.limits {
 				output.max(a).min(b)
 			} else {
@@ -95,13 +91,11 @@ impl<N: RealField + From<f64> + Display> Pid<N> {
 	pub fn estimate(&mut self, input: N, input_read_instant: Instant) -> N {
 		if let Some((_, last_instant)) = self.last_input {
 			if last_instant >= input_read_instant {
-				self.last_output.unwrap()
-			} else {
-				self.estimate_with_new_input(input, input_read_instant)
+				return self.last_output.unwrap();
 			}
-		} else {
-			self.estimate_with_new_input(input, input_read_instant)
 		}
+
+		self.estimate_with_new_input(input, input_read_instant)
 	}
 }
 

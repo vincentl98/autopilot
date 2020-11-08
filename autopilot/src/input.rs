@@ -49,11 +49,12 @@ impl<N: RealField> Display for NavioAdcData<N> {
 }
 
 pub type RcChannels<N> = Option<[N; 16]>;
+pub type Orientation<N> = (UnitQuaternion<N>, ImuData<N>, Instant);
 
 #[derive(Clone, Debug)]
-pub enum Input<N: RealField> {
-	RcChannels(RcChannels<N>),
-	NavioAdc(NavioAdcData<N>),
-	Orientation((UnitQuaternion<N>, Instant)),
+pub enum Input {
+	RcChannels(RcChannels<f64>),
+	NavioAdc(NavioAdcData<f64>),
+	Orientation(Orientation<f64>),
 	SoftArmed(bool),
 }

@@ -1,14 +1,10 @@
 use crossbeam_channel::Sender;
 use std::time::Instant;
 
-use ahrs::{Madgwick};
-use systemstat::Duration;
-use autopilot::{Autopilot, Collector, Input, Dispatcher, ImuData, RcChannels, NavioAdcData};
-use std::f32::consts::PI;
-use std::ops::Mul;
-use crate::output_controllers::navio_esc_output_controller::QUADCOPTER_ESC_CHANNELS;
-use pid::Pid;
+use autopilot::{Collector, Input, Dispatcher, ImuData, RcChannels, NavioAdcData, Orientation};
 use nalgebra::{UnitQuaternion, Quaternion};
+
+use crate::output_controllers::navio_esc_output_controller::QUADCOPTER_ESC_CHANNELS;
 
 #[allow(dead_code)]
 #[derive(Debug)]
@@ -50,6 +46,7 @@ impl QuadcopterCollector {
 			input_frame: QuadcopterInputFrame {
 				navio_adc: NavioAdcData::default(),
 				orientation: (UnitQuaternion::from_quaternion(Quaternion::new(1., 0., 0., 0.)),
+							  ImuData::default(),
 							  Instant::now()),
 				rc_channels: RcChannels::default(),
 				soft_armed: false,
@@ -60,20 +57,21 @@ impl QuadcopterCollector {
 
 #[derive(Debug, Clone)]
 pub struct QuadcopterInputFrame {
-	pub navio_adc: NavioAdcData,
-	pub orientation: (UnitQuaternion<f64>, Instant),
-	pub rc_channels: RcChannels,
+	pub navio_adc: NavioAdcData<f64>,
+	pub orientation: Orientation<f64>,
+	pub rc_channels: RcChannels<f64>,
 	pub soft_armed: bool,
 }
 
 impl Collector<QuadcopterInputFrame> for QuadcopterCollector {
 	fn collect(&mut self, input: Input) -> QuadcopterInputFrame {
+		#[allow(unreachable_patterns)]
 		match input {
 			Input::Orientation(orientation) => self.input_frame.orientation = orientation,
 			Input::NavioAdc(navio_adc) => self.input_frame.navio_adc = navio_adc,
 			Input::RcChannels(rc_channels) => self.input_frame.rc_channels = rc_channels,
 			Input::SoftArmed(soft_armed) => self.input_frame.soft_armed = soft_armed,
-			_ => warn!("Unhandled input: {:?}", input),
+			_ => error!("Unhandled input: {:?}", input),
 		}
 
 		self.input_frame.clone()

@@ -1,7 +1,7 @@
-use autopilot::{InputController, Input, RcChannels};
+use autopilot::{InputController, Input};
 use std::error::Error;
 use systemstat::Duration;
-use std::{io, fs};
+use std::io;
 use std::fs::File;
 use std::io::{Read, Seek, SeekFrom};
 
@@ -18,7 +18,6 @@ pub const CHANNELS: usize = 16;
 
 impl NavioRcInputController {
 	pub fn new(range: (u16, u16)) -> Result<Self, io::Error> {
-
 		let channel_files = [
 			File::open(format!("{}/ch0", RC_IN_PATH))?,
 			File::open(format!("{}/ch1", RC_IN_PATH))?,
@@ -44,7 +43,7 @@ impl NavioRcInputController {
 			channel_files,
 			connected_file,
 			range,
-			inv_range: 1. / (range.1 - range.0) as f64
+			inv_range: 1. / (range.1 - range.0) as f64,
 		})
 	}
 
@@ -87,7 +86,12 @@ impl InputController for NavioRcInputController {
 			}
 		};
 
-
+		info!(target: "navio_rc", "{} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {}",
+			  connected as u8,
+			  channels[0], channels[1], channels[2], channels[3],
+			  channels[4], channels[5], channels[6], channels[7],
+			  channels[8], channels[9], channels[10], channels[11],
+			  channels[12], channels[13], channels[14], channels[15]);
 
 		if connected {
 			Ok(Input::RcChannels(Some(channels)))
