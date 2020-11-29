@@ -6,6 +6,11 @@ pub struct Mixer<N> {
 
 impl Mixer<f64> {
 	pub fn mix(&self, pid_outputs: RollPitchYaw<f64>, throttle: f64) -> [f64; 4] {
+		debug!(target: "mixer_input", "{} {} {} {}",
+			   pid_outputs.roll,
+			   pid_outputs.pitch,
+			   pid_outputs.yaw,
+			   throttle);
 
 		// PID outputs are in (-1., +1.), therefore mixed outputs are in (-3., +3.)
 		let outputs = [
@@ -30,8 +35,16 @@ impl Mixer<f64> {
 		let throttle = throttle.min(max_throttle);
 
 		// After throttle is added, the minimum output value is ensured
-		outputs.map(|x| (x + throttle)
+		let outputs = outputs.map(|x| (x + throttle)
 			.max(self.min_output)
-			.min(1.))
+			.min(1.));
+
+		debug!(target: "mixer_output", "{} {} {} {}",
+			   outputs[0],
+			   outputs[1],
+			   outputs[2],
+			   outputs[3]);
+
+		outputs
 	}
 }

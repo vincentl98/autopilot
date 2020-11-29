@@ -5,7 +5,6 @@ members = [
     "black_box",
     "dsp",
     "lsm9ds1",
-    "navigation",
     "pid",
     "pwm",
     "quadcopter",

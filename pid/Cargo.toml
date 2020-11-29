@@ -9,4 +9,4 @@ dsp = { path = "../dsp" }
 nalgebra = "0.23"
 
 [dev-dependencies]
-assert_approx_eq = "1.1.0"
+assert_approx_eq = "1.1"

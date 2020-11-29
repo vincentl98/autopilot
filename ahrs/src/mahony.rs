@@ -4,22 +4,22 @@ use crate::{AhrsError, Ahrs};
 #[derive(Debug)]
 pub struct Mahony<N: RealField> {
 	/// Proportional filter gain constant.
-	kp: N,
+	k_p: N,
 	/// Integral filter gain constant.
-	ki: N,
+	k_i: N,
 	/// Integral error vector.
-	e_int: Vector3<N>,
+	err_sum: Vector3<N>,
 	/// Filter state quaternion.
-	quat: Quaternion<N>,
+	state: Quaternion<N>,
 }
 
 impl<N: RealField> Mahony<N> {
-	pub fn new(kp: N, ki: N) -> Self {
+	pub fn new(k_p: N, k_i: N) -> Self {
 		Mahony {
-			kp,
-			ki,
-			e_int: nalgebra::zero(),
-			quat: Quaternion::from_parts(N::one(), nalgebra::zero::<nalgebra::Vector3<N>>()),
+			k_p,
+			k_i,
+			err_sum: nalgebra::zero(),
+			state: Quaternion::from_parts(N::one(), nalgebra::zero::<nalgebra::Vector3<N>>()),
 		}
 	}
 }
@@ -100,7 +100,7 @@ impl<N: RealField> Ahrs<N> for Mahony<N> {
 		accelerometer: &Vector3<N>,
 		dt: N,
 	) -> Result<(), AhrsError> {
-		let q = self.quat;
+		let q = self.state;
 
 		let zero: N = nalgebra::zero();
 		let two: N = nalgebra::convert(2.0);
@@ -118,27 +118,28 @@ impl<N: RealField> Ahrs<N> for Mahony<N> {
 			let e = accelerometer.cross(&v);
 
 			// Error is sum of cross product between estimated direction and measured direction of fields
-			if self.ki > zero {
-				self.e_int += e * dt;
+			if self.k_i > zero {
+				self.err_sum += e * dt;
 			} else {
-				self.e_int.x = zero;
-				self.e_int.y = zero;
-				self.e_int.z = zero;
+				self.err_sum.x = zero;
+				self.err_sum.y = zero;
+				self.err_sum.z = zero;
 			}
 
 			// Apply feedback terms
-			let gyro = *gyroscope + e * self.kp + self.e_int * self.ki;
+			let gyro = *gyroscope + e * self.k_p + self.err_sum * self.k_i;
 
 			// Compute rate of change of quaternion
 			let q_dot = q * Quaternion::from_parts(zero, gyro) * half;
 
 			// Integrate to yield quaternion
-			self.quat = (q + q_dot * dt).normalize();
+			self.state = (q + q_dot * dt).normalize();
 		}
+
 		Ok(())
 	}
 
-	fn quaternion(&self) -> UnitQuaternion<N> {
-		UnitQuaternion::from_quaternion(self.quat.clone())
+	fn orientation(&self) -> UnitQuaternion<N> {
+		UnitQuaternion::from_quaternion(self.state.clone())
 	}
 }

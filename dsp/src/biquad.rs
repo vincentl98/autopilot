@@ -7,22 +7,24 @@ pub struct Biquad<N: RealField> {
 	output_state: (Vector3<N>, Vector3<N>),
 }
 
-pub fn low_pass(f: f64, q: f64, sample_frequency: f64) -> Biquad<f64> {
-	let omega = 2.0 * std::f64::consts::PI * f / sample_frequency;
+impl Biquad<f64> where Self: Send + Sync {
+	pub fn low_pass(f: f64, q: f64, sample_frequency: f64) -> Self {
+		let omega = 2.0 * std::f64::consts::PI * f / sample_frequency;
 
-	let omega_s = omega.sin();
-	let omega_c = omega.cos();
-	let alpha = omega_s / (2.0 * q);
+		let omega_s = omega.sin();
+		let omega_c = omega.cos();
+		let alpha = omega_s / (2.0 * q);
 
-	let b0 = (1.0 - omega_c) * 0.5;
-	let b1 = 1.0 - omega_c;
-	let b2 = (1.0 - omega_c) * 0.5;
+		let b0 = (1.0 - omega_c) * 0.5;
+		let b1 = 1.0 - omega_c;
+		let b2 = (1.0 - omega_c) * 0.5;
 
-	let a0 = 1.0 + alpha;
-	let a1 = -2.0 * omega_c;
-	let a2 = 1.0 - alpha;
+		let a0 = 1.0 + alpha;
+		let a1 = -2.0 * omega_c;
+		let a2 = 1.0 - alpha;
 
-	Biquad::<f64>::new((a0, a1 / a0, a2 / a0), (b0 / a0, b1 / a0, b2 / a0))
+		Biquad::<f64>::new((a0, a1 / a0, a2 / a0), (b0 / a0, b1 / a0, b2 / a0))
+	}
 }
 
 impl<N: RealField> Biquad<N> where Self: Send + Sync {

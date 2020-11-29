@@ -27,8 +27,8 @@ pub struct QuadcopterAutopilot {
 impl QuadcopterAutopilot {
 	pub fn new(pid_values: RollPitchYaw<(f64, f64, f64)>,
 			   rates: RollPitchYaw<f64>,
-			   limits: RollPitch<f64>) -> Self {
-		const MIN_ESC_VALUE: f64 = 0.025;
+			   limits: RollPitch<f64>,
+			   mixer: Mixer<f64>) -> Self {
 		Self {
 			pids: RollPitchYaw {
 				roll: Pid::new(pid_values.roll, 0., Some((-1., 1.))),
@@ -37,7 +37,7 @@ impl QuadcopterAutopilot {
 			},
 			rates,
 			limits,
-			mixer: Mixer { min_output: MIN_ESC_VALUE },
+			mixer,
 			previous_mode: Mode::Off,
 		}
 	}
@@ -136,8 +136,6 @@ impl Autopilot<QuadcopterInputFrame, QuadcopterOutputFrame> for QuadcopterAutopi
 					pitch: self.pids.pitch.estimate(imu_data.gyr.y, instant),
 					yaw: self.pids.yaw.estimate(imu_data.gyr.z, instant),
 				};
-
-				info!(target: "pid_outputs", "{} {} {}", pid_outputs.roll, pid_outputs.pitch, pid_outputs.yaw);
 
 				let mut outputs = self.mixer.mix(pid_outputs,
 												 rc_channels[2]);

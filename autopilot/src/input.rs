@@ -3,8 +3,6 @@ use std::time::{Instant};
 use std::fmt::{Display, Formatter};
 use std::fmt;
 
-pub const G: f64 = 9.80665;
-
 #[derive(Clone, Debug)]
 pub struct ImuData<N: RealField> {
 	pub acc: Vector3<N>,

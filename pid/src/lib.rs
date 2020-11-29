@@ -2,10 +2,9 @@
 #[macro_use]
 extern crate assert_approx_eq;
 
-
 use std::{fmt::Display, time::Instant};
 use dsp::{ScalarAlphaBeta};
-use nalgebra::{RealField, Vector3};
+use nalgebra::{RealField};
 
 pub struct Pid<N: RealField> {
 	k: (N, N, N),
@@ -58,12 +57,11 @@ impl<N: RealField + From<f64> + Display> Pid<N> {
 
 				self.error_integral = self.error_integral + self.k.1 * dt * error;
 
-				let filtered_d_term = self.d_term_filter.update(Vector3::new(
-					- self.k.2 * (last_input - input),
-					N::zero(),
-					N::zero()), dt); // TODO: hack
+				let filtered_d_term = self
+					.d_term_filter
+					.update(-self.k.2 * (last_input - input), dt);
 
-				(self.error_integral, filtered_d_term.x / dt) // Note: d(err)/dt = - d(input)/dt
+				(self.error_integral, filtered_d_term / dt) // Note: d(err)/dt = - d(input)/dt
 			} else {
 				(N::zero(), N::zero())
 			}

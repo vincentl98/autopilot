@@ -12,14 +12,14 @@ use std::{
 use std::error::Error;
 
 lazy_static! {
-    static ref BLACK_BOX_CHANNEL: (Sender<Message>, Receiver<Message>) = unbounded::<Message>();
+    static ref BLACK_BOX_CHANNEL: (Sender<BlackBoxInput>, Receiver<BlackBoxInput>) = unbounded::<BlackBoxInput>();
     static ref BLACK_BOX_LOGGER: BlackBoxLogger = BlackBoxLogger {
         start_instant: Instant::now()
     };
 }
 
-enum Message {
-	Log(String),
+enum BlackBoxInput {
+	Message(String),
 	Flush,
 }
 
@@ -80,11 +80,11 @@ impl BlackBox {
 
 		while let Ok(message) = BLACK_BOX_CHANNEL.1.recv_timeout(RECEIVE_TIMEOUT) {
 			match message {
-				Message::Log(content) => {
-					println!("{}", &content);
-					self.buffer.push_back(content)
+				BlackBoxInput::Message(message) => {
+					println!("{}", &message);
+					self.buffer.push_back(message)
 				}
-				Message::Flush => self.try_flush(),
+				BlackBoxInput::Flush => self.try_flush(),
 			}
 
 			const MAX_BUFFER_LEN: usize = 64;
@@ -119,28 +119,29 @@ impl Log for BlackBoxLogger {
 
 	fn log(&self, record: &Record) {
 		if self.enabled(record.metadata()) {
-			let formatted = {
-				let head = format!("[{:.3}][{}]",
-								   (Instant::now() - self.start_instant).as_secs_f32(),
-								   record.target());
-
+			let formatted_message = {
 				if record.metadata().level() == Level::Error {
 					format!(
-						"{} Error: {} ({:?}:{:?})",
-						head,
+						"[{:.3}][{}] Error: {} ({:?}:{:?})",
+						(Instant::now() - self.start_instant).as_secs_f32(),
+						record.target(),
 						record.args(),
 						record.file_static().unwrap_or("unknown"),
 						record.line().unwrap_or(0)
 					)
 				} else {
-					format!("{} {}", head, record.args())
+					format!("[{:.3}][{}] {}",
+							(Instant::now() - self.start_instant).as_secs_f32(),
+							record.target(),
+							record.args())
 				}
 			};
-			BLACK_BOX_CHANNEL.0.send(Message::Log(formatted)).unwrap();
+
+			BLACK_BOX_CHANNEL.0.send(BlackBoxInput::Message(formatted_message)).unwrap();
 		}
 	}
 
 	fn flush(&self) {
-		BLACK_BOX_CHANNEL.0.send(Message::Flush).unwrap();
+		BLACK_BOX_CHANNEL.0.send(BlackBoxInput::Flush).unwrap();
 	}
 }

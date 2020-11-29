@@ -1,26 +1,8 @@
 [package]
 name = "ahrs"
 version = "0.2.2"
-authors = ["Jon Magnuson <jon.magnuson@gmail.com>", "Vincent Leporher"]
+authors = ["Jon Magnuson <jon.magnuson@gmail.com>", "Vincent Leporcher"]
 edition = "2018"
 
 [dependencies]
-autopilot = { path = "../autopilot" }
-
-[dependencies.nalgebra]
-version = "0.23"
-
-[dependencies.simba]
-version = "0.2"
-
-[dependencies.num-traits]
-version = "0.2"
-
-[dev-dependencies.rand]
-version = "0.7"
-
-[dev-dependencies.approx]
-version = "0.3"
-
-[dev-dependencies.criterion]
-version = "0.3"
+nalgebra = "0.23"

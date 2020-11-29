@@ -4,8 +4,6 @@ use std::{thread, io};
 use std::time::{Duration, Instant};
 use nalgebra::Vector3;
 
-use autopilot::{G};
-
 use constants::*;
 use registers::*;
 use std::f64::consts::PI;
@@ -15,7 +13,6 @@ pub struct LSM9DS1 {
 	acc_gyr: Spidev,
 	mag: Spidev,
 }
-
 
 pub const OUTPUT_DELAY: Duration = Duration::from_micros(4202);
 
@@ -90,6 +87,8 @@ impl LSM9DS1 {
 	}
 
 	pub fn read_output(&mut self) -> Result<([Vector3<f64>; 3], Instant), io::Error> {
+		const G: f64 = 9.80665;
+
 		const ACC_4G_SCALE: f64 = 4. * G / i16::max_value() as f64;
 		const GYR_500_DPS_SCALE: f64 = - 500. * PI / i16::max_value() as f64 / 180.;
 		const MAG_4G_SCALE: f64 = 4. / i16::max_value() as f64;

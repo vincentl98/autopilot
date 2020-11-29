@@ -15,5 +15,5 @@ pub trait Ahrs<N: RealField> where Self: Send + Sync + 'static {
 				  gyroscope: &Vector3<N>,
 				  accelerometer: &Vector3<N>,
 				  dt: N) -> Result<(), AhrsError>;
-	fn quaternion(&self) -> UnitQuaternion<N>;
+	fn orientation(&self) -> UnitQuaternion<N>;
 }

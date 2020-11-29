@@ -4,14 +4,14 @@ use crate::{AhrsError, Ahrs};
 #[derive(Debug)]
 pub struct Madgwick<N: RealField> {
 	beta: N,
-	quaternion: Quaternion<N>,
+	state: Quaternion<N>,
 }
 
 impl<N: RealField> Madgwick<N> {
 	pub fn new(beta: N) -> Self {
 		Madgwick {
 			beta,
-			quaternion: Quaternion::new(N::one(), N::zero(), N::zero(), N::zero()),
+			state: Quaternion::new(N::one(), N::zero(), N::zero(), N::zero()),
 		}
 	}
 }
@@ -83,7 +83,7 @@ impl<N: RealField> Ahrs<N> for Madgwick<N> {
 					  gyroscope: &Vector3<N>,
 					  accelerometer: &Vector3<N>,
 					  dt: N) -> Result<(), AhrsError> {
-		let q = &self.quaternion;
+		let q = &self.state;
 
 		let zero: N = nalgebra::zero();
 		let two: N = nalgebra::convert(2.0);
@@ -120,13 +120,13 @@ impl<N: RealField> Ahrs<N> for Madgwick<N> {
 			- Quaternion::new(step[0], step[1], step[2], step[3]) * self.beta;
 
 		// Integrate to yield quaternion
-		self.quaternion = (q + q_dot * dt).normalize();
+		self.state = (q + q_dot * dt).normalize();
 
 		Ok(())
 	}
 
-	fn quaternion(&self) -> UnitQuaternion<N> {
-		UnitQuaternion::from_quaternion(self.quaternion.clone())
+	fn orientation(&self) -> UnitQuaternion<N> {
+		UnitQuaternion::from_quaternion(self.state.clone())
 	}
 }
 

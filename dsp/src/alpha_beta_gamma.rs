@@ -42,7 +42,7 @@ impl AlphaBetaGamma<f64> where Self: Send + Sync {
 pub struct ScalarAlphaBeta<N: RealField> {
 	alpha: N,
 	beta: N,
-	state: (Vector3<N>, Vector3<N>),
+	state: (N, N),
 }
 
 impl<N: RealField> ScalarAlphaBeta<N> {
@@ -54,9 +54,9 @@ impl<N: RealField> ScalarAlphaBeta<N> {
 	}
 
 
-	pub fn update(&mut self, value: Vector3<N>, dt: N) -> Vector3<N> {
+	pub fn update(&mut self, value: N, dt: N) -> N {
 		let (prev_estimated_value,
-			prev_estimated_derivative) = &self.state;
+			prev_estimated_derivative) = self.state;
 
 		let estimated_value = prev_estimated_value
 			+ prev_estimated_derivative.scale(dt);

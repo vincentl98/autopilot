@@ -1,13 +1,12 @@
 use std::{error::Error, time::Duration, io};
 use std::time::Instant;
 use lsm9ds1::LSM9DS1;
-use autopilot::{InputController, Input, ImuData, G};
+use autopilot::{InputController, Input, ImuData};
 
 use nalgebra::{Vector3};
 
 use ahrs::{Ahrs};
 use dsp::{Biquad, AlphaBetaGamma};
-use dsp::biquad::low_pass;
 
 pub struct LSM9DS1InputController<AHRS: Ahrs<f64>> {
 	ahrs: AHRS,
@@ -38,9 +37,9 @@ impl<AHRS: Ahrs<f64>> LSM9DS1InputController<AHRS> {
 			ahrs,
 			acc_offset: Vector3::<f64>::zeros(),
 			gyr_offset: Vector3::<f64>::zeros(),
-			acc_low_pass_filter: low_pass(145.0, 0.48, 500.0),
+			acc_low_pass_filter: Biquad::low_pass(145.0, 0.48, 500.0),
 			acc_abg_filter: AlphaBetaGamma::<f64>::new(0.008, 0.0002, 0.0),
-			gyr_low_pass_filter: low_pass(170.0, 0.45, 500.0),
+			gyr_low_pass_filter: Biquad::low_pass(170.0, 0.45, 500.0),
 			gyr_abg_filter: AlphaBetaGamma::<f64>::new(0.06, 0.004, 0.011),
 			last_data_instant: None,
 		})
@@ -64,6 +63,7 @@ impl<AHRS: Ahrs<f64>> LSM9DS1InputController<AHRS> {
 		acc_average = acc_average / CALIBRATION_MEASUREMENTS as f64;
 		gyr_average = gyr_average / CALIBRATION_MEASUREMENTS as f64;
 
+		const G: f64 = 9.80665;
 		acc_average.z -= G;
 
 		Ok((acc_average, gyr_average))
@@ -140,7 +140,7 @@ impl<AHRS: Ahrs<f64>> InputController for LSM9DS1InputController<AHRS> {
 
 		self.last_data_instant = Some(instant);
 
-		let orientation = self.ahrs.quaternion();
+		let orientation = self.ahrs.orientation();
 
 		let as_euler_angles = orientation.euler_angles();
 		debug!(target: "ahrs", "{} {} {}", as_euler_angles.0, as_euler_angles.1, as_euler_angles.2);
